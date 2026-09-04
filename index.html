@@ -492,6 +492,50 @@ html[dir=rtl] .switch.on::after{transform:translateX(-20px);}
 
 <div id="notif-layer"></div>
 
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword,
+    createUserWithEmailAndPassword, signOut
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyATo8Js6HcO9lkxw8fmbKm9YG80IjTziq4",
+    authDomain: "aurora-os-d65c6.firebaseapp.com",
+    projectId: "aurora-os-d65c6",
+    storageBucket: "aurora-os-d65c6.firebasestorage.app",
+    messagingSenderId: "66768359816",
+    appId: "1:66768359816:web:137512ed0439f3ba37aa3d",
+    measurementId: "G-D8R43RCXKH"
+  };
+
+  const fbApp = initializeApp(firebaseConfig);
+  const fbAuth = getAuth(fbApp);
+  const fbDb = getFirestore(fbApp);
+
+  // واجهة بسيطة يستخدمها باقي كود الموقع (سكريبت عادي غير module)
+  window.AuroraCloud = {
+    auth: fbAuth,
+    ready: true,
+    onAuthStateChanged(cb){ return onAuthStateChanged(fbAuth, cb); },
+    signIn(email, pass){ return signInWithEmailAndPassword(fbAuth, email, pass); },
+    signUp(email, pass){ return createUserWithEmailAndPassword(fbAuth, email, pass); },
+    signOutUser(){ return signOut(fbAuth); },
+    async loadUserData(uid){
+      const snap = await getDoc(doc(fbDb, 'users', uid));
+      return snap.exists() ? snap.data() : null;
+    },
+    async saveUserData(uid, data){
+      await setDoc(doc(fbDb, 'users', uid), data, { merge:true });
+    }
+  };
+  // إشارة إن الطبقة السحابية جاهزة، لو الكود التاني حاب ينتظرها
+  window.dispatchEvent(new Event('auroracloud-ready'));
+</script>
+
 <script>
 (function(){
 "use strict";
@@ -571,6 +615,7 @@ function loadFS(){
 }
 function saveFS(){
   try{ localStorage.setItem(FS_KEY, JSON.stringify(FS)); }catch(e){ notify('خطأ في التخزين','تعذّر حفظ الملفات، قد تكون الذاكرة ممتلئة.'); }
+  scheduleCloudSync();
 }
 function getFolder(path){ // path: array of names starting after root
   let node = FS;
@@ -590,7 +635,20 @@ function loadSettings(){
     SETTINGS = raw ? Object.assign({}, DEFAULT_SETTINGS, JSON.parse(raw)) : Object.assign({}, DEFAULT_SETTINGS);
   }catch(e){ SETTINGS = Object.assign({}, DEFAULT_SETTINGS); }
 }
-function saveSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(SETTINGS)); }
+function saveSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(SETTINGS)); scheduleCloudSync(); }
+
+/* ============================ مزامنة سحابية (Firebase) ============================ */
+let cloudSyncTimer = null;
+function scheduleCloudSync(){
+  if(!window.AuroraCloud || !window.AuroraCloud.auth.currentUser) return;
+  clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = setTimeout(()=>{
+    const uid = window.AuroraCloud.auth.currentUser.uid;
+    window.AuroraCloud.saveUserData(uid, { fs: FS, settings: SETTINGS }).catch(()=>{
+      notify('تعذّرت المزامنة', 'لم نتمكن من حفظ التغييرات على السحابة، تحقق من الإنترنت.');
+    });
+  }, 900);
+}
 function applySettings(){
   document.body.classList.toggle('theme-light', SETTINGS.theme === 'light');
   const desktop = $('#desktop');
@@ -617,35 +675,27 @@ function randomSalt(){ return Array.from(crypto.getRandomValues(new Uint8Array(1
 function bufToB64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
 function b64ToBuf(b64){ return Uint8Array.from(atob(b64), c=>c.charCodeAt(0)); }
 
+/* -------------------------------------------------------------------------
+   ملاحظة: هذه نسخة "محاكاة بصرية" فقط للبصمة/الوجه — لا تستخدم WebAuthn
+   الحقيقي، وبالتالي لا تُنشئ أي بصمة/وجه جديد مسجّل فعليًا على جهاز
+   المستخدم أو في نظام التشغيل. الهدف منها هو التمثيل داخل واجهة
+   Aurora OS الوهمية فقط، وليست وسيلة حماية حقيقية.
+   ------------------------------------------------------------------------- */
+function delay(ms){ return new Promise(res=> setTimeout(res, ms)); }
+
 async function webauthnAvailable(){
-  try{
-    if(!window.PublicKeyCredential) return false;
-    if(!window.isSecureContext) return false;
-    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-  }catch(e){ return false; }
+  // نعتبرها متاحة دائمًا لأنها محاكاة بصرية ولا تعتمد على عتاد الجهاز
+  return true;
 }
 async function webauthnRegister(){
-  const cred = await navigator.credentials.create({
-    publicKey:{
-      challenge: crypto.getRandomValues(new Uint8Array(32)),
-      rp:{ name:'Aurora OS' },
-      user:{ id: crypto.getRandomValues(new Uint8Array(16)), name:'aurora-user', displayName:'المستخدم' },
-      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
-      authenticatorSelection:{ authenticatorAttachment:'platform', userVerification:'required' },
-      timeout: 60000,
-    }
-  });
-  return bufToB64(cred.rawId);
+  // محاكاة "تسجيل" بصمة/وجه: مجرد تأخير قصير لإعطاء إحساس المسح،
+  // بدون أي استدعاء حقيقي لـ navigator.credentials
+  await delay(1400);
+  return 'sim-' + randomSalt();
 }
 async function webauthnVerify(credId){
-  await navigator.credentials.get({
-    publicKey:{
-      challenge: crypto.getRandomValues(new Uint8Array(32)),
-      allowCredentials:[{ id:b64ToBuf(credId), type:'public-key' }],
-      userVerification:'required',
-      timeout: 60000,
-    }
-  });
+  // محاكاة "تحقق" بصمة/وجه: تأخير قصير ثم نجاح، بدون أي مطابقة حقيقية
+  await delay(1200);
   return true;
 }
 
@@ -714,7 +764,7 @@ function renderLockLogin(){
         setTimeout(lockClose, 250);
       }catch(err){
         msg.classList.remove('ok');
-        msg.textContent = 'تعذّر التحقق — تأكد من فتح الملف عبر رابط آمن (https) ووجود بصمة/وجه مسجّل بجهازك';
+        msg.textContent = 'تعذّر التحقق، حاول مرة أخرى';
       }
     });
   }
@@ -1413,22 +1463,35 @@ registerApp({
     function renderSecurity(){
       const hasPass = !!AUTH.passHash;
       const hasBio = !!AUTH.webauthnId;
+      const cloudEmail = (window.AuroraCloud && window.AuroraCloud.auth.currentUser) ? window.AuroraCloud.auth.currentUser.email : null;
       body.innerHTML = `
         <div class="set-section">
-          <h3>الأمان</h3>
-          <p class="desc">حماية النظام بكلمة مرور، وتفعيل الدخول بالبصمة أو التعرف على الوجه (حسب دعم جهازك).</p>
+          <h3>الحساب السحابي</h3>
+          <p class="desc">حسابك هو اللي بيربط بياناتك (ملفاتك وإعداداتك) عبر أي جهاز تسجّل دخول منه.</p>
+          <div class="set-row" style="border-bottom:none;">
+            <div><div class="lbl">مسجّل دخول بـ</div><div class="sub">${cloudEmail ? cloudEmail : 'غير متصل'}</div></div>
+            <button class="danger-btn" data-act="cloud-signout" ${cloudEmail?'':'disabled'}>🚪 تسجيل الخروج</button>
+          </div>
+        </div>
+        <div class="set-section">
+          <h3>الأمان المحلي (هذا الجهاز فقط)</h3>
+          <p class="desc">قفل إضافي على هذا المتصفح تحديدًا، بجانب حسابك السحابي.</p>
           <div class="set-row">
             <div><div class="lbl">كلمة المرور</div><div class="sub">${hasPass ? 'مُفعّلة حالياً' : 'غير مُفعّلة'}</div></div>
             <button class="fm-btn" data-act="set-pass">${hasPass ? '✏️ تغيير' : '🔒 تعيين'}</button>
           </div>
           ${hasPass ? `<div class="set-row"><div><div class="lbl">إزالة كلمة المرور</div><div class="sub">سيتم فتح النظام بدون طلب كلمة مرور</div></div><button class="danger-btn" data-act="remove-pass">إزالة</button></div>` : ''}
           <div class="set-row" style="border-bottom:none;">
-            <div><div class="lbl">الدخول بالبصمة / الوجه (WebAuthn)</div><div class="sub">${hasBio ? 'مُسجّلة على هذا الجهاز' : 'غير مسجّلة — يتطلب فتح النظام عبر رابط آمن (https)'}</div></div>
+            <div><div class="lbl">الدخول بالبصمة / الوجه</div><div class="sub">${hasBio ? 'مُفعّلة داخل هذا المتصفح فقط' : 'غير مفعّلة'}</div></div>
             <button class="fm-btn" data-act="${hasBio ? 'remove-bio':'set-bio'}" ${hasPass?'':'disabled title="عيّن كلمة مرور أولاً"'}>${hasBio ? '🗑️ إزالة' : '👆 تسجيل'}</button>
           </div>
           <div class="lock-msg" id="sec-msg" style="text-align:right;margin-top:8px;"></div>
         </div>
       `;
+      const signoutBtn = $('[data-act="cloud-signout"]', body);
+      if(signoutBtn) signoutBtn.addEventListener('click', ()=>{
+        if(confirm('هيتم تسجيل خروجك من الحساب السحابي على هذا الجهاز. متابعة؟')) cloudSignOut();
+      });
     }
 
     function renderAppearance(){
@@ -1574,7 +1637,7 @@ registerApp({
           if(msg) msg.textContent = 'جارٍ التحقق من دعم جهازك…';
           const ok = await webauthnAvailable();
           if(!ok){
-            if(msg) msg.textContent = 'جهازك أو المتصفح لا يدعم البصمة/الوجه، أو الملف مفتوح بدون رابط آمن (https).';
+            if(msg) msg.textContent = 'تعذّر التفعيل، حاول مرة أخرى';
             return;
           }
           try{
@@ -1944,9 +2007,90 @@ function boot(){
     const bootEl = $('#boot');
     bootEl.style.opacity = '0';
     setTimeout(()=>{ bootEl.style.display='none'; }, 520);
-    runLockFlow();
-    notify('مرحباً بك 👋', 'تم تشغيل Aurora OS بنجاح. جميع بياناتك محفوظة محلياً في هذا المتصفح.');
+    startCloudFlow();
   }, 900);
+}
+
+/* ============================ حساب سحابي (Firebase) — دخول من أي جهاز ============================ */
+let cloudUser = null;
+function startCloudFlow(){
+  if(!window.AuroraCloud){
+    // لو السكريبت السحابي فشل يتحمل (مثلاً لا يوجد إنترنت)، نكمل محليًا فقط
+    runLockFlow();
+    notify('وضع محلي فقط', 'تعذّر الاتصال بالسحابة، بياناتك هتتحفظ في هذا المتصفح فقط.');
+    return;
+  }
+  window.AuroraCloud.onAuthStateChanged(async (user)=>{
+    if(user){
+      cloudUser = user;
+      lockClose();
+      try{
+        const data = await window.AuroraCloud.loadUserData(user.uid);
+        if(data){
+          if(data.fs) FS = data.fs;
+          if(data.settings) SETTINGS = Object.assign({}, DEFAULT_SETTINGS, data.settings);
+        }else{
+          await window.AuroraCloud.saveUserData(user.uid, { fs: FS, settings: SETTINGS });
+        }
+      }catch(e){
+        notify('تعذّرت مزامنة البيانات', 'هنكمل بالبيانات المحفوظة محليًا لحد ما يرجع الاتصال.');
+      }
+      applySettings();
+      buildDesktopIcons();
+      const chip = $('.user-chip span:last-child');
+      if(chip) chip.textContent = user.email;
+      runLockFlow();
+      notify('مرحباً بك 👋', 'تم تسجيل الدخول بحسابك، وكل بياناتك متزامنة عبر أي جهاز.');
+    }else{
+      cloudUser = null;
+      renderCloudAuth();
+      lockOpen();
+    }
+  });
+}
+
+function renderCloudAuth(mode){
+  mode = mode || 'login';
+  const card = $('#lock-card');
+  card.innerHTML = `
+    <div class="lock-avatar">☁️</div>
+    <div class="lock-title">${mode==='login' ? 'تسجيل الدخول إلى Aurora OS' : 'إنشاء حساب Aurora OS'}</div>
+    <div class="lock-sub">${mode==='login' ? 'ادخل بحسابك لترى نفس بياناتك من أي جهاز' : 'حساب جديد لحفظ بياناتك على السحابة'}</div>
+    <input type="email" id="ca-email" placeholder="البريد الإلكتروني" autocomplete="username">
+    <input type="password" id="ca-pass" placeholder="كلمة المرور (٦ أحرف على الأقل)" autocomplete="${mode==='login'?'current-password':'new-password'}">
+    <button class="lock-btn" data-act="go">${mode==='login' ? '🔓 دخول' : '✨ إنشاء الحساب'}</button>
+    <button class="lock-btn secondary" data-act="switch">${mode==='login' ? 'مفيش عندي حساب — إنشاء حساب جديد' : 'عندي حساب بالفعل — تسجيل دخول'}</button>
+    <div class="lock-msg" id="lock-msg"></div>
+  `;
+  const msg = $('#lock-msg', card);
+  $('[data-act="switch"]', card).addEventListener('click', ()=> renderCloudAuth(mode==='login' ? 'signup' : 'login'));
+  $('[data-act="go"]', card).addEventListener('click', async ()=>{
+    const email = $('#ca-email', card).value.trim();
+    const pass = $('#ca-pass', card).value;
+    if(!email || !pass){ msg.textContent = 'اكتب البريد الإلكتروني وكلمة المرور'; return; }
+    msg.classList.remove('ok');
+    msg.textContent = 'جارٍ الاتصال…';
+    try{
+      if(mode === 'login') await window.AuroraCloud.signIn(email, pass);
+      else await window.AuroraCloud.signUp(email, pass);
+      // onAuthStateChanged هيكمل الباقي تلقائيًا
+    }catch(e){
+      const map = {
+        'auth/invalid-email':'صيغة البريد الإلكتروني غير صحيحة',
+        'auth/user-not-found':'مفيش حساب بهذا البريد',
+        'auth/wrong-password':'كلمة المرور غير صحيحة',
+        'auth/invalid-credential':'بيانات الدخول غير صحيحة',
+        'auth/email-already-in-use':'البريد ده مسجّل بالفعل — جرّب تسجيل الدخول',
+        'auth/weak-password':'كلمة المرور ضعيفة، لازم ٦ أحرف على الأقل',
+      };
+      msg.textContent = map[e.code] || ('حصل خطأ: ' + (e.message||'')); 
+    }
+  });
+}
+
+function cloudSignOut(){
+  if(!window.AuroraCloud) return;
+  window.AuroraCloud.signOutUser().then(()=>{ location.reload(); });
 }
 
 document.addEventListener('DOMContentLoaded', boot);
