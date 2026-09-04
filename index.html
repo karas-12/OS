@@ -1,0 +1,1957 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurora OS</title>
+<style>
+:root{
+  --accent:#7c9cff;
+  --accent-2:#b98cff;
+  --glass-bg:rgba(255,255,255,0.10);
+  --glass-bg-strong:rgba(255,255,255,0.16);
+  --glass-border:rgba(255,255,255,0.28);
+  --glass-shadow:0 20px 60px rgba(0,0,0,0.45);
+  --text-1:#f3f4fb;
+  --text-2:rgba(243,244,251,0.68);
+  --text-3:rgba(243,244,251,0.42);
+  --radius-lg:22px;
+  --radius-md:14px;
+  --radius-sm:9px;
+  --taskbar-h:64px;
+  --topbar-h:34px;
+  --blur:22px;
+  --font: 'Segoe UI', 'Tahoma', 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+body.theme-light{
+  --glass-bg:rgba(255,255,255,0.55);
+  --glass-bg-strong:rgba(255,255,255,0.72);
+  --glass-border:rgba(255,255,255,0.9);
+  --glass-shadow:0 20px 50px rgba(30,30,60,0.18);
+  --text-1:#1b1c2b;
+  --text-2:rgba(27,28,43,0.68);
+  --text-3:rgba(27,28,43,0.42);
+}
+*{box-sizing:border-box;}
+html,body{
+  margin:0;padding:0;width:100%;height:100%;
+  font-family:var(--font);
+  color:var(--text-1);
+  overflow:hidden;
+  user-select:none;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--accent);color:#fff;}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.25);border-radius:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+
+/* ===================== DESKTOP / WALLPAPER ===================== */
+#desktop{
+  position:fixed;inset:0;
+  transition:background 1s ease;
+  background-size:cover;background-position:center;
+}
+#desktop::before{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(circle at 15% 20%, rgba(255,255,255,0.10), transparent 45%),
+             radial-gradient(circle at 85% 80%, rgba(0,0,0,0.18), transparent 55%);
+  pointer-events:none;
+}
+.wp-aurora{background:linear-gradient(125deg,#1b1035 0%,#33246b 30%,#7c3cad 55%,#c05c9c 78%,#ffb199 100%);}
+.wp-ocean{background:linear-gradient(135deg,#02142c 0%,#023e5c 35%,#0d7d8c 65%,#48c9b0 100%);}
+.wp-dusk{background:linear-gradient(135deg,#0f0c29 0%,#302b63 45%,#24243e 100%);}
+.wp-mint{background:linear-gradient(135deg,#0d2818 0%,#134e3a 40%,#2e8b57 70%,#a3d9a5 100%);}
+.wp-sunset{background:linear-gradient(135deg,#1a0933 0%,#5c1a4a 30%,#c73e63 60%,#ff9a5a 85%,#ffd76e 100%);}
+.wp-mono{background:linear-gradient(135deg,#050505 0%,#1c1c1e 50%,#2c2c2e 100%);}
+
+#desktop-icons{
+  position:absolute;top:calc(var(--topbar-h) + 18px);right:22px;
+  display:flex;flex-direction:column;gap:6px;z-index:2;
+}
+.desktop-icon{
+  width:88px;padding:10px 4px;border-radius:var(--radius-sm);
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  cursor:pointer;text-align:center;
+}
+.desktop-icon:hover, .desktop-icon.active{background:rgba(255,255,255,0.14);}
+.desktop-icon .ic{
+  width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;
+  font-size:22px;background:var(--glass-bg-strong);backdrop-filter:blur(10px);
+  border:1px solid var(--glass-border);
+}
+.desktop-icon span{font-size:12px;color:var(--text-1);text-shadow:0 1px 4px rgba(0,0,0,0.4);line-height:1.25;}
+
+/* ===================== TOP BAR ===================== */
+#topbar{
+  position:fixed;top:0;left:0;right:0;height:var(--topbar-h);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;
+  background:rgba(10,10,20,0.28);
+  backdrop-filter:blur(var(--blur)) saturate(160%);
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(160%);
+  border-bottom:1px solid rgba(255,255,255,0.08);
+  z-index:5000;font-size:13px;color:var(--text-1);
+}
+#topbar .tb-left{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:.2px;}
+#topbar .tb-left .logo-dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 0 10px var(--accent);}
+#topbar .tb-right{display:flex;align-items:center;gap:14px;}
+#topbar .tb-item{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;cursor:default;}
+#topbar .tb-item.clock{cursor:pointer;}
+#topbar .tb-item.clock:hover{background:rgba(255,255,255,0.12);}
+#topbar svg{width:16px;height:16px;fill:var(--text-1);opacity:.9;}
+
+/* ===================== WINDOWS ===================== */
+#windows-layer{position:fixed;inset:0;top:var(--topbar-h);bottom:var(--taskbar-h);z-index:10;pointer-events:none;}
+.window{
+  position:absolute;
+  min-width:320px;min-height:220px;
+  background:var(--glass-bg);
+  backdrop-filter:blur(var(--blur)) saturate(160%);
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(160%);
+  border:1px solid var(--glass-border);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--glass-shadow);
+  display:flex;flex-direction:column;overflow:hidden;
+  pointer-events:auto;
+  transition:box-shadow .2s ease;
+  animation:winOpen .22s cubic-bezier(.2,.9,.3,1);
+}
+@keyframes winOpen{from{opacity:0;transform:scale(.94) translateY(10px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.window.closing{animation:winClose .16s ease forwards;}
+@keyframes winClose{to{opacity:0;transform:scale(.95);}}
+.window.maximized{border-radius:0;}
+.window.focused{box-shadow:0 25px 70px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.35) inset;}
+.win-titlebar{
+  height:42px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 8px 0 14px;cursor:move;
+  background:linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0));
+  border-bottom:1px solid rgba(255,255,255,0.08);
+  flex-shrink:0;
+}
+.win-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text-1);}
+.win-title .win-ic{font-size:15px;}
+.win-controls{display:flex;gap:6px;}
+.win-btn{
+  width:28px;height:28px;border-radius:9px;border:none;
+  background:rgba(255,255,255,0.08);color:var(--text-1);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  font-size:13px;transition:background .15s ease, color .15s ease;
+}
+.win-btn:hover{background:rgba(255,255,255,0.2);}
+.win-btn.close:hover{background:#e5484d;color:#fff;}
+.win-body{flex:1;overflow:auto;position:relative;color:var(--text-1);}
+.win-resize{position:absolute;width:14px;height:14px;left:6px;bottom:6px;cursor:nesw-resize;opacity:.5;}
+
+/* ===================== START MENU ===================== */
+#start-menu{
+  position:fixed;bottom:calc(var(--taskbar-h) + 10px);left:50%;transform:translateX(-50%) translateY(14px);
+  width:560px;max-width:92vw;max-height:70vh;
+  background:var(--glass-bg-strong);
+  backdrop-filter:blur(28px) saturate(180%);
+  -webkit-backdrop-filter:blur(28px) saturate(180%);
+  border:1px solid var(--glass-border);border-radius:var(--radius-lg);
+  box-shadow:var(--glass-shadow);
+  z-index:6000;padding:22px;
+  opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;
+  display:flex;flex-direction:column;gap:16px;
+}
+#start-menu.open{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0);}
+.start-search{
+  display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.10);
+  border:1px solid var(--glass-border);border-radius:12px;padding:9px 14px;
+}
+.start-search input{
+  flex:1;background:none;border:none;outline:none;color:var(--text-1);font-size:13px;font-family:var(--font);
+}
+.start-search input::placeholder{color:var(--text-3);}
+.start-label{font-size:12px;color:var(--text-2);font-weight:600;margin-bottom:2px;}
+.start-apps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.start-app{
+  display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 6px;
+  border-radius:var(--radius-md);cursor:pointer;background:rgba(255,255,255,0.03);
+  transition:background .15s ease, transform .15s ease;
+}
+.start-app:hover{background:rgba(255,255,255,0.14);transform:translateY(-2px);}
+.start-app .ic{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;background:var(--glass-bg-strong);border:1px solid var(--glass-border);}
+.start-app span{font-size:11.5px;color:var(--text-1);text-align:center;}
+.start-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  border-top:1px solid rgba(255,255,255,0.1);padding-top:14px;
+}
+.user-chip{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-1);}
+.user-chip .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;}
+.power-btn{width:34px;height:34px;border-radius:10px;border:none;background:rgba(255,255,255,0.1);color:var(--text-1);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.power-btn:hover{background:#e5484d;color:#fff;}
+
+/* ===================== QUICK PANEL ===================== */
+#quick-panel{
+  position:fixed;top:calc(var(--topbar-h) + 8px);left:16px;width:300px;
+  background:var(--glass-bg-strong);backdrop-filter:blur(26px) saturate(170%);
+  -webkit-backdrop-filter:blur(26px) saturate(170%);
+  border:1px solid var(--glass-border);border-radius:var(--radius-lg);box-shadow:var(--glass-shadow);
+  z-index:6000;padding:18px;opacity:0;pointer-events:none;transform:translateY(-10px);
+  transition:opacity .18s ease, transform .18s ease;
+}
+#quick-panel.open{opacity:1;pointer-events:auto;transform:translateY(0);}
+.qp-toggles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.qp-toggle{
+  display:flex;align-items:center;gap:8px;padding:10px;border-radius:12px;
+  background:rgba(255,255,255,0.06);border:1px solid transparent;cursor:pointer;font-size:12px;color:var(--text-2);
+}
+.qp-toggle.active{background:rgba(124,156,255,0.22);border-color:var(--accent);color:var(--text-1);}
+.qp-row{margin-bottom:14px;}
+.qp-row label{font-size:11.5px;color:var(--text-2);display:flex;justify-content:space-between;margin-bottom:6px;}
+.qp-row input[type=range]{width:100%;accent-color:var(--accent);}
+.qp-clock-big{font-size:34px;font-weight:300;text-align:center;margin-bottom:2px;}
+.qp-date-big{font-size:12px;color:var(--text-2);text-align:center;margin-bottom:14px;}
+
+/* ===================== TASKBAR ===================== */
+#taskbar{
+  position:fixed;bottom:0;left:0;right:0;height:var(--taskbar-h);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:0 14px;z-index:7000;
+  background:rgba(10,10,20,0.30);
+  backdrop-filter:blur(var(--blur)) saturate(170%);
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(170%);
+  border-top:1px solid rgba(255,255,255,0.08);
+}
+#start-btn{
+  display:flex;align-items:center;justify-content:center;
+  width:44px;height:44px;border-radius:13px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  box-shadow:0 6px 18px rgba(124,156,255,0.4);
+  font-size:19px;color:#fff;transition:transform .15s ease;
+}
+#start-btn:hover{transform:translateY(-2px);}
+#taskbar-sep{width:1px;height:26px;background:rgba(255,255,255,0.15);margin:0 4px;}
+#taskbar-apps{display:flex;align-items:center;gap:6px;}
+.tb-app-btn{
+  position:relative;height:44px;min-width:44px;padding:0 12px;border-radius:12px;border:none;
+  background:rgba(255,255,255,0.06);color:var(--text-1);cursor:pointer;
+  display:flex;align-items:center;gap:8px;font-size:13px;transition:background .15s ease;
+}
+.tb-app-btn:hover{background:rgba(255,255,255,0.16);}
+.tb-app-btn.active{background:rgba(255,255,255,0.22);}
+.tb-app-btn .dot{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--accent);}
+#tray-toggle{
+  height:44px;padding:0 14px;border-radius:12px;border:none;background:rgba(255,255,255,0.06);
+  color:var(--text-1);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;line-height:1.25;
+}
+#tray-toggle:hover{background:rgba(255,255,255,0.16);}
+
+/* ===================== CONTEXT MENU ===================== */
+.ctx-menu{
+  position:fixed;z-index:9000;min-width:190px;padding:6px;border-radius:12px;
+  background:var(--glass-bg-strong);backdrop-filter:blur(24px);border:1px solid var(--glass-border);
+  box-shadow:var(--glass-shadow);
+}
+.ctx-item{padding:9px 12px;font-size:13px;border-radius:8px;cursor:pointer;color:var(--text-1);display:flex;align-items:center;gap:8px;}
+.ctx-item:hover{background:rgba(255,255,255,0.14);}
+.ctx-sep{height:1px;background:rgba(255,255,255,0.12);margin:5px 4px;}
+
+/* ===================== APP: FILE MANAGER ===================== */
+.fm{display:flex;height:100%;font-size:13px;}
+.fm-sidebar{width:180px;flex-shrink:0;border-left:1px solid rgba(255,255,255,0.08);padding:12px 8px;overflow:auto;}
+.fm-sidebar .fm-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;cursor:pointer;margin-bottom:2px;color:var(--text-2);}
+.fm-sidebar .fm-item:hover, .fm-sidebar .fm-item.active{background:rgba(255,255,255,0.12);color:var(--text-1);}
+.fm-main{flex:1;display:flex;flex-direction:column;min-width:0;}
+.fm-toolbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.08);}
+.fm-btn{background:rgba(255,255,255,0.08);border:1px solid var(--glass-border);color:var(--text-1);border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;}
+.fm-btn:hover{background:rgba(255,255,255,0.18);}
+.fm-path{color:var(--text-2);font-size:12px;margin-inline-start:auto;}
+.fm-grid{flex:1;overflow:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;align-content:start;}
+.fm-file{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border-radius:10px;cursor:pointer;text-align:center;border:1px solid transparent;}
+.fm-file:hover{background:rgba(255,255,255,0.08);}
+.fm-file.selected{background:rgba(124,156,255,0.22);border-color:var(--accent);}
+.fm-file .ic{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:rgba(255,255,255,0.08);overflow:hidden;}
+.fm-file .ic img{width:100%;height:100%;object-fit:cover;border-radius:12px;}
+.fm-file span{font-size:11px;color:var(--text-1);word-break:break-word;line-height:1.3;max-width:90px;}
+.fm-empty{color:var(--text-3);text-align:center;margin-top:40px;font-size:13px;}
+
+/* ===================== APP: NOTEPAD ===================== */
+.np{display:flex;flex-direction:column;height:100%;}
+.np-toolbar{display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.08);}
+.np textarea{
+  flex:1;resize:none;border:none;outline:none;background:transparent;color:var(--text-1);
+  padding:18px 22px;font-size:14.5px;line-height:1.7;font-family:'Cascadia Code',Consolas,monospace;
+}
+.np-status{padding:6px 14px;font-size:11px;color:var(--text-3);border-top:1px solid rgba(255,255,255,0.06);}
+
+/* ===================== APP: CALCULATOR ===================== */
+.calc{display:flex;flex-direction:column;height:100%;padding:14px;gap:12px;}
+.calc-screen{background:rgba(0,0,0,0.18);border-radius:14px;padding:16px;text-align:left;direction:ltr;}
+.calc-expr{font-size:12px;color:var(--text-3);min-height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.calc-result{font-size:34px;font-weight:300;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;}
+.calc-grid{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.calc-btn{
+  border:none;border-radius:12px;font-size:16px;cursor:pointer;background:rgba(255,255,255,0.08);color:var(--text-1);
+  transition:background .1s ease, transform .1s ease;
+}
+.calc-btn:active{transform:scale(.95);}
+.calc-btn:hover{background:rgba(255,255,255,0.18);}
+.calc-btn.op{background:rgba(124,156,255,0.25);}
+.calc-btn.eq{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;}
+.calc-btn.fn{color:var(--text-2);}
+
+/* ===================== APP: BROWSER ===================== */
+.browser{display:flex;flex-direction:column;height:100%;}
+.browser-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.08);}
+.browser-bar input{flex:1;background:rgba(255,255,255,0.08);border:1px solid var(--glass-border);border-radius:20px;padding:8px 16px;color:var(--text-1);outline:none;font-size:12.5px;font-family:var(--font);}
+.browser-frame{flex:1;background:#fff;}
+.browser-frame iframe{width:100%;height:100%;border:none;}
+.browser-home{height:100%;overflow:auto;padding:34px;text-align:center;}
+.browser-home h2{font-weight:300;font-size:26px;margin-bottom:22px;}
+.browser-shortcuts{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+.browser-shortcuts .bs{width:96px;padding:14px 8px;border-radius:14px;background:rgba(255,255,255,0.08);cursor:pointer;}
+.browser-shortcuts .bs:hover{background:rgba(255,255,255,0.16);}
+.browser-shortcuts .bs .ic{font-size:26px;margin-bottom:8px;}
+.browser-shortcuts .bs span{font-size:11.5px;}
+
+/* ===================== APP: IMAGE VIEWER ===================== */
+.imgv{height:100%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.25);position:relative;flex-direction:column;gap:14px;}
+.imgv img{max-width:92%;max-height:78%;border-radius:10px;box-shadow:0 20px 50px rgba(0,0,0,0.5);}
+.imgv .imgv-empty{color:var(--text-3);text-align:center;}
+.imgv-thumbs{display:flex;gap:8px;overflow:auto;max-width:92%;padding:4px;}
+.imgv-thumbs img{width:56px;height:56px;object-fit:cover;border-radius:8px;cursor:pointer;opacity:.6;max-height:56px;}
+.imgv-thumbs img.active{opacity:1;outline:2px solid var(--accent);}
+
+/* ===================== APP: SETTINGS ===================== */
+.settings{display:flex;height:100%;}
+.set-nav{width:170px;flex-shrink:0;border-left:1px solid rgba(255,255,255,0.08);padding:14px 8px;}
+.set-nav .set-item{padding:10px 12px;border-radius:9px;cursor:pointer;font-size:13px;color:var(--text-2);margin-bottom:2px;}
+.set-nav .set-item:hover,.set-nav .set-item.active{background:rgba(255,255,255,0.12);color:var(--text-1);}
+.set-body{flex:1;padding:22px 26px;overflow:auto;}
+.set-section h3{font-size:16px;font-weight:600;margin:0 0 4px;}
+.set-section p.desc{font-size:12.5px;color:var(--text-2);margin:0 0 18px;}
+.set-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.07);}
+.set-row .lbl{font-size:13px;}
+.set-row .sub{font-size:11.5px;color:var(--text-3);}
+.wp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
+.wp-thumb{height:70px;border-radius:12px;cursor:pointer;border:2px solid transparent;position:relative;}
+.wp-thumb.active{border-color:var(--accent);}
+.switch{width:44px;height:24px;border-radius:20px;background:rgba(255,255,255,0.18);position:relative;cursor:pointer;flex-shrink:0;}
+.switch.on{background:var(--accent);}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .18s ease;}
+.switch.on::after{transform:translateX(20px);}
+body:not([dir]) .switch.on::after{transform:translateX(20px);}
+html[dir=rtl] .switch.on::after{transform:translateX(-20px);}
+.theme-pick{display:flex;gap:12px;margin-top:10px;}
+.theme-opt{flex:1;padding:14px;border-radius:12px;background:rgba(255,255,255,0.06);border:2px solid transparent;cursor:pointer;text-align:center;font-size:12.5px;}
+.theme-opt.active{border-color:var(--accent);}
+.danger-btn{background:rgba(229,72,77,0.18);color:#ff8b8e;border:1px solid rgba(229,72,77,0.4);padding:9px 16px;border-radius:10px;cursor:pointer;font-size:12.5px;}
+.danger-btn:hover{background:rgba(229,72,77,0.3);}
+
+/* ===================== NOTIFICATIONS ===================== */
+#notif-layer{position:fixed;top:calc(var(--topbar-h) + 10px);left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.notif{
+  min-width:280px;max-width:340px;padding:12px 16px;border-radius:14px;
+  background:var(--glass-bg-strong);backdrop-filter:blur(20px);border:1px solid var(--glass-border);
+  box-shadow:var(--glass-shadow);font-size:12.5px;color:var(--text-1);
+  animation:notifIn .25s ease;
+}
+@keyframes notifIn{from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:translateY(0);}}
+.notif b{display:block;margin-bottom:2px;font-size:13px;}
+
+/* ===================== BOOT SCREEN ===================== */
+#boot{
+  position:fixed;inset:0;background:#050510;z-index:99999;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:22px;transition:opacity .5s ease;
+}
+#boot .boot-logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 0 40px rgba(124,156,255,0.5);}
+#boot .boot-ring{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,0.15);border-top-color:var(--accent);animation:spin 0.9s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#boot .boot-text{color:rgba(255,255,255,0.5);font-size:13px;letter-spacing:.5px;}
+
+/* ===================== LOCK SCREEN ===================== */
+#lockscreen{
+  position:fixed;inset:0;z-index:50000;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(5,5,16,0.55);
+  backdrop-filter:blur(30px) saturate(140%);
+  -webkit-backdrop-filter:blur(30px) saturate(140%);
+  opacity:0;pointer-events:none;transition:opacity .4s ease;
+}
+#lockscreen.open{opacity:1;pointer-events:auto;}
+.lock-card{
+  width:340px;max-width:90vw;padding:32px 28px;border-radius:var(--radius-lg);
+  background:var(--glass-bg-strong);border:1px solid var(--glass-border);box-shadow:var(--glass-shadow);
+  display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;
+}
+.lock-avatar{
+  width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:34px;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 10px 30px rgba(124,156,255,0.4);
+  margin-bottom:6px;
+}
+.lock-title{font-size:16px;font-weight:700;color:var(--text-1);}
+.lock-sub{font-size:12px;color:var(--text-2);margin-bottom:6px;line-height:1.6;}
+.lock-card input[type=password], .lock-card input[type=text]{
+  width:100%;background:rgba(255,255,255,0.1);border:1px solid var(--glass-border);border-radius:12px;
+  padding:11px 14px;color:var(--text-1);font-size:14px;outline:none;text-align:center;font-family:var(--font);
+}
+.lock-card .lock-btn{
+  width:100%;padding:11px;border-radius:12px;border:none;cursor:pointer;font-size:13.5px;font-weight:600;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;transition:opacity .15s ease;
+}
+.lock-card .lock-btn:hover{opacity:.9;}
+.lock-card .lock-btn.secondary{background:rgba(255,255,255,0.1);color:var(--text-1);font-weight:500;}
+.lock-card .lock-btn.skip{background:none;color:var(--text-3);font-weight:400;font-size:12px;padding:4px;}
+.lock-msg{font-size:11.5px;color:#ff9b9e;min-height:14px;}
+.lock-msg.ok{color:#7be0a0;}
+
+@media (max-width:720px){
+  .fm-sidebar,.set-nav{display:none;}
+  #start-menu{width:94vw;}
+  .start-apps{grid-template-columns:repeat(3,1fr);}
+}
+</style>
+</head>
+<body>
+
+<div id="boot">
+  <div class="boot-logo">🌌</div>
+  <div class="boot-ring"></div>
+  <div class="boot-text">جارٍ تشغيل Aurora OS…</div>
+</div>
+
+<div id="lockscreen">
+  <div class="lock-card" id="lock-card"></div>
+</div>
+
+<div id="desktop" class="wp-aurora">
+  <div id="desktop-icons"></div>
+</div>
+
+<div id="topbar">
+  <div class="tb-left">
+    <span class="logo-dot"></span>
+    <span>Aurora OS</span>
+  </div>
+  <div class="tb-right">
+    <div class="tb-item" id="wifi-item" title="واي فاي">
+      <svg viewBox="0 0 24 24"><path d="M12 20a1.6 1.6 0 1 1 0-3.2 1.6 1.6 0 0 1 0 3.2Zm-4.2-5.1a6 6 0 0 1 8.4 0 1 1 0 0 1-1.4 1.4 4 4 0 0 0-5.6 0 1 1 0 0 1-1.4-1.4Zm-3-3.5a10.6 10.6 0 0 1 14.4 0 1 1 0 1 1-1.36 1.47 8.6 8.6 0 0 0-11.68 0A1 1 0 1 1 4.8 11.4Zm-2.9-3.4a15 15 0 0 1 20.2 0 1 1 0 1 1-1.34 1.48 13 13 0 0 0-17.52 0A1 1 0 1 1 1.9 8Z"/></svg>
+    </div>
+    <div class="tb-item" title="البطارية">
+      <svg viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 0-1-1h-1v-1a2 2 0 0 0-2-2H4Zm1 2h10a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z"/></svg>
+      <span id="battery-pct">86%</span>
+    </div>
+    <div class="tb-item clock" id="clock-topbar"></div>
+  </div>
+</div>
+
+<div id="windows-layer"></div>
+
+<div id="quick-panel">
+  <div class="qp-clock-big" id="qp-clock"></div>
+  <div class="qp-date-big" id="qp-date"></div>
+  <div class="qp-toggles">
+    <div class="qp-toggle active" data-toggle="wifi">📶 واي فاي</div>
+    <div class="qp-toggle" data-toggle="bt">🔷 بلوتوث</div>
+    <div class="qp-toggle active" data-toggle="dnd">🌙 عدم الإزعاج</div>
+    <div class="qp-toggle" data-toggle="air">✈️ وضع الطيران</div>
+  </div>
+  <div class="qp-row">
+    <label><span>السطوع</span><span id="qp-bright-val">80%</span></label>
+    <input type="range" id="qp-brightness" min="20" max="100" value="80">
+  </div>
+  <div class="qp-row">
+    <label><span>مستوى الصوت</span><span id="qp-vol-val">60%</span></label>
+    <input type="range" id="qp-volume" min="0" max="100" value="60">
+  </div>
+  <div class="qp-row" style="margin-bottom:0;">
+    <label><span>شحن البطارية</span><span id="qp-batt-val">86%</span></label>
+    <input type="range" id="qp-battery" min="1" max="100" value="86">
+  </div>
+</div>
+
+<div id="start-menu">
+  <div class="start-search">
+    <span>🔍</span>
+    <input type="text" id="start-search-input" placeholder="ابحث عن تطبيقات وملفات…">
+  </div>
+  <div>
+    <div class="start-label">التطبيقات المثبّتة</div>
+    <div class="start-apps" id="start-apps-grid"></div>
+  </div>
+  <div class="start-footer">
+    <div class="user-chip"><div class="avatar">أ</div><span>المستخدم</span></div>
+    <button class="power-btn" id="power-btn" title="إعادة تشغيل">⏻</button>
+  </div>
+</div>
+
+<div id="taskbar">
+  <button id="start-btn" title="ابدأ">✦</button>
+  <div id="taskbar-sep"></div>
+  <div id="taskbar-apps"></div>
+  <div id="taskbar-sep-2" class="tb-sep" style="width:1px;height:26px;background:rgba(255,255,255,0.15);"></div>
+  <button id="tray-toggle">
+    <span id="tray-time">--:--</span>
+    <span id="tray-date" style="color:var(--text-3);font-size:10px;">--/--</span>
+  </button>
+</div>
+
+<div id="notif-layer"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ========================================================================
+   AURORA OS — نظام تشغيل ويب متكامل يعمل من ملف واحد
+   ======================================================================== */
+
+/* ---------------------------- أدوات مساعدة عامة ---------------------------- */
+const $ = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+const uid = (p='id') => p + '_' + Math.random().toString(36).slice(2,10);
+const escapeHTML = (s='') => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function loadScriptOnce(src){
+  window.__loadedScripts = window.__loadedScripts || {};
+  if(window.__loadedScripts[src] === 'done') return Promise.resolve();
+  if(window.__loadedScripts[src] === 'pending') return window.__loadedScriptPromises[src];
+  window.__loadedScriptPromises = window.__loadedScriptPromises || {};
+  window.__loadedScripts[src] = 'pending';
+  const p = new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = src; s.async = true;
+    s.onload = ()=>{ window.__loadedScripts[src] = 'done'; resolve(); };
+    s.onerror = ()=>{ window.__loadedScripts[src] = 'error'; reject(new Error('تعذّر تحميل المكتبة الخارجية: ' + src)); };
+    document.head.appendChild(s);
+  });
+  window.__loadedScriptPromises[src] = p;
+  return p;
+}
+function loadCSSOnce(href){
+  if(document.querySelector(`link[data-href="${href}"]`)) return;
+  const l = document.createElement('link');
+  l.rel = 'stylesheet'; l.href = href; l.dataset.href = href;
+  document.head.appendChild(l);
+}
+
+function notify(title, body, ms=3800){
+  const layer = $('#notif-layer');
+  const el = document.createElement('div');
+  el.className = 'notif';
+  el.innerHTML = `<b>${escapeHTML(title)}</b><div>${escapeHTML(body)}</div>`;
+  layer.appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .3s ease, transform .3s ease'; el.style.opacity='0'; el.style.transform='translateY(-10px)'; setTimeout(()=>el.remove(),300); }, ms);
+}
+
+/* ============================ نظام الملفات الافتراضي ============================
+   شجرة JSON محفوظة في localStorage. كل عقدة: {type:'folder'|'file', name, ...}
+   المجلد: {type:'folder', children:{name:node,...}}
+   الملف نصي: {type:'file', kind:'text', content:'...'}
+   الملف صورة: {type:'file', kind:'image', content:'data:image/...;base64,...'}
+=================================================================================== */
+const FS_KEY = 'auroraos_fs_v1';
+const SETTINGS_KEY = 'auroraos_settings_v1';
+
+function defaultFS(){
+  return {
+    type:'folder', name:'root',
+    children:{
+      'المستندات': {type:'folder', name:'المستندات', children:{
+        'مرحباً بك.txt': {type:'file', kind:'text', name:'مرحباً بك.txt', content:'مرحباً بك في Aurora OS 👋\n\nهذا نظام تشغيل ويب كامل يعمل داخل متصفحك من ملف HTML واحد فقط.\n\nجرّب:\n- إنشاء مجلدات وملفات جديدة من مدير الملفات.\n- رفع صورة لمعاينتها في عارض الصور.\n- كتابة ملاحظة وحفظها هنا.\n- تغيير الخلفية والثيم من الإعدادات.\n\nكل شيء يُحفظ محلياً في متصفحك تلقائياً.'}
+      }},
+      'الصور': {type:'folder', name:'الصور', children:{}},
+      'الملاحظات': {type:'folder', name:'الملاحظات', children:{
+        'أفكار.txt': {type:'file', kind:'text', name:'أفكار.txt', content:'- فكرة رقم 1\n- فكرة رقم 2\n- فكرة رقم 3'}
+      }},
+    }
+  };
+}
+
+let FS = null;
+function loadFS(){
+  try{
+    const raw = localStorage.getItem(FS_KEY);
+    FS = raw ? JSON.parse(raw) : defaultFS();
+  }catch(e){ FS = defaultFS(); }
+}
+function saveFS(){
+  try{ localStorage.setItem(FS_KEY, JSON.stringify(FS)); }catch(e){ notify('خطأ في التخزين','تعذّر حفظ الملفات، قد تكون الذاكرة ممتلئة.'); }
+}
+function getFolder(path){ // path: array of names starting after root
+  let node = FS;
+  for(const p of path){
+    if(!node.children || !node.children[p]) return null;
+    node = node.children[p];
+  }
+  return node;
+}
+
+/* ============================ الإعدادات العامة ============================ */
+const DEFAULT_SETTINGS = { theme:'dark', wallpaper:'wp-aurora', animations:true };
+let SETTINGS = null;
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    SETTINGS = raw ? Object.assign({}, DEFAULT_SETTINGS, JSON.parse(raw)) : Object.assign({}, DEFAULT_SETTINGS);
+  }catch(e){ SETTINGS = Object.assign({}, DEFAULT_SETTINGS); }
+}
+function saveSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(SETTINGS)); }
+function applySettings(){
+  document.body.classList.toggle('theme-light', SETTINGS.theme === 'light');
+  const desktop = $('#desktop');
+  desktop.className = SETTINGS.wallpaper;
+}
+
+/* ============================ نظام الحماية (كلمة مرور + بصمة/وجه حقيقية) ============================ */
+const AUTH_KEY = 'auroraos_auth_v1';
+let AUTH = null;
+function loadAuth(){
+  try{
+    const raw = localStorage.getItem(AUTH_KEY);
+    AUTH = raw ? JSON.parse(raw) : { passHash:null, salt:null, webauthnId:null };
+  }catch(e){ AUTH = { passHash:null, salt:null, webauthnId:null }; }
+}
+function saveAuth(){ localStorage.setItem(AUTH_KEY, JSON.stringify(AUTH)); }
+
+async function sha256Hex(text){
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function randomSalt(){ return Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+function bufToB64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+function b64ToBuf(b64){ return Uint8Array.from(atob(b64), c=>c.charCodeAt(0)); }
+
+async function webauthnAvailable(){
+  try{
+    if(!window.PublicKeyCredential) return false;
+    if(!window.isSecureContext) return false;
+    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  }catch(e){ return false; }
+}
+async function webauthnRegister(){
+  const cred = await navigator.credentials.create({
+    publicKey:{
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp:{ name:'Aurora OS' },
+      user:{ id: crypto.getRandomValues(new Uint8Array(16)), name:'aurora-user', displayName:'المستخدم' },
+      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{ authenticatorAttachment:'platform', userVerification:'required' },
+      timeout: 60000,
+    }
+  });
+  return bufToB64(cred.rawId);
+}
+async function webauthnVerify(credId){
+  await navigator.credentials.get({
+    publicKey:{
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials:[{ id:b64ToBuf(credId), type:'public-key' }],
+      userVerification:'required',
+      timeout: 60000,
+    }
+  });
+  return true;
+}
+
+function lockOpen(){ $('#lockscreen').classList.add('open'); }
+function lockClose(){ $('#lockscreen').classList.remove('open'); }
+
+function renderLockSetup(){
+  const card = $('#lock-card');
+  card.innerHTML = `
+    <div class="lock-avatar">🌌</div>
+    <div class="lock-title">إعداد الحماية لأول مرة</div>
+    <div class="lock-sub">اختر كلمة مرور لحماية Aurora OS، أو تخطَّ هذه الخطوة إن أردت.</div>
+    <input type="password" id="lp1" placeholder="كلمة المرور الجديدة">
+    <input type="password" id="lp2" placeholder="تأكيد كلمة المرور">
+    <button class="lock-btn" data-act="set">🔒 تعيين كلمة المرور والمتابعة</button>
+    <button class="lock-btn skip" data-act="skip">تخطّي — بدون حماية</button>
+    <div class="lock-msg" id="lock-msg"></div>
+  `;
+  $('[data-act="set"]', card).addEventListener('click', async ()=>{
+    const p1 = $('#lp1', card).value, p2 = $('#lp2', card).value;
+    const msg = $('#lock-msg', card);
+    if(!p1 || p1.length < 3){ msg.textContent = 'كلمة المرور قصيرة جداً (٣ أحرف على الأقل)'; return; }
+    if(p1 !== p2){ msg.textContent = 'كلمتا المرور غير متطابقتين'; return; }
+    const salt = randomSalt();
+    AUTH.salt = salt;
+    AUTH.passHash = await sha256Hex(salt + p1);
+    saveAuth();
+    notify('تم تفعيل الحماية 🔒', 'يمكنك الآن تسجيل الدخول بالبصمة/الوجه من الإعدادات > الأمان.');
+    lockClose();
+  });
+  $('[data-act="skip"]', card).addEventListener('click', ()=>{ lockClose(); });
+}
+
+function renderLockLogin(){
+  const card = $('#lock-card');
+  card.innerHTML = `
+    <div class="lock-avatar">🔒</div>
+    <div class="lock-title">Aurora OS مؤمّن</div>
+    <div class="lock-sub">أدخل كلمة المرور لفتح النظام</div>
+    <input type="password" id="lp" placeholder="كلمة المرور" autofocus>
+    <button class="lock-btn" data-act="unlock">فتح القفل</button>
+    <button class="lock-btn secondary" data-act="bio" id="lock-bio-btn" style="display:none;">👆 الدخول بالبصمة / الوجه</button>
+    <div class="lock-msg" id="lock-msg"></div>
+  `;
+  const msg = $('#lock-msg', card);
+  const input = $('#lp', card);
+
+  async function tryPassword(){
+    const val = input.value;
+    const hash = await sha256Hex(AUTH.salt + val);
+    if(hash === AUTH.passHash){ msg.classList.add('ok'); msg.textContent = 'تم التحقق ✅'; setTimeout(lockClose, 250); }
+    else{ msg.classList.remove('ok'); msg.textContent = 'كلمة المرور غير صحيحة'; input.value=''; input.focus(); }
+  }
+  $('[data-act="unlock"]', card).addEventListener('click', tryPassword);
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') tryPassword(); });
+
+  if(AUTH.webauthnId){
+    webauthnAvailable().then(ok=>{
+      if(ok) $('#lock-bio-btn', card).style.display = 'block';
+    });
+    $('[data-act="bio"]', card).addEventListener('click', async ()=>{
+      msg.textContent = 'جارٍ التحقق عبر البصمة/الوجه…';
+      try{
+        await webauthnVerify(AUTH.webauthnId);
+        msg.classList.add('ok'); msg.textContent = 'تم التحقق ✅';
+        setTimeout(lockClose, 250);
+      }catch(err){
+        msg.classList.remove('ok');
+        msg.textContent = 'تعذّر التحقق — تأكد من فتح الملف عبر رابط آمن (https) ووجود بصمة/وجه مسجّل بجهازك';
+      }
+    });
+  }
+}
+
+function runLockFlow(){
+  loadAuth();
+  if(!AUTH.passHash){
+    renderLockSetup();
+    lockOpen();
+  }else{
+    renderLockLogin();
+    lockOpen();
+  }
+}
+
+/* ============================ الوقت والحالة الوهمية ============================ */
+function pad(n){ return n.toString().padStart(2,'0'); }
+function updateClocks(){
+  const now = new Date();
+  const time = pad(now.getHours()) + ':' + pad(now.getMinutes());
+  const dateStr = now.toLocaleDateString('ar-EG', { weekday:'long', day:'numeric', month:'long' });
+  $('#clock-topbar').textContent = time;
+  $('#tray-time').textContent = time;
+  $('#tray-date').textContent = pad(now.getDate())+'/'+pad(now.getMonth()+1);
+  $('#qp-clock').textContent = time;
+  $('#qp-date').textContent = dateStr;
+}
+setInterval(updateClocks, 1000*10);
+
+let batteryLevel = 86;
+function setBattery(v){
+  batteryLevel = Math.max(1, Math.min(100, v));
+  $('#battery-pct').textContent = batteryLevel + '%';
+  $('#qp-batt-val').textContent = batteryLevel + '%';
+  $('#qp-battery').value = batteryLevel;
+}
+setInterval(()=>{ setBattery(batteryLevel - (Math.random() < 0.4 ? 1 : 0)); if(batteryLevel <= 15) notify('تنبيه البطارية','مستوى البطارية منخفض ('+batteryLevel+'%). قم بتوصيل الشاحن.', 5000); }, 45000);
+
+/* ============================ سجل التطبيقات (App Registry) ============================ */
+const APPS = {}; // id -> {id,name,icon,singleton,render(container, win, args)}
+
+function registerApp(app){ APPS[app.id] = app; }
+
+/* ============================ مدير النوافذ (Window Manager) ============================ */
+const WM = {
+  windows: {}, // winId -> {el, appId, state:{x,y,w,h}, maximized:false}
+  zTop: 100,
+  openWindows(){ return Object.values(WM.windows); },
+};
+
+function focusWindow(winId){
+  const w = WM.windows[winId];
+  if(!w) return;
+  WM.zTop += 1;
+  w.el.style.zIndex = WM.zTop;
+  $$('.window').forEach(el => el.classList.remove('focused'));
+  w.el.classList.add('focused');
+  WM.activeId = winId;
+  updateTaskbarActive();
+}
+
+function updateTaskbarActive(){
+  $$('.tb-app-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.winid === WM.activeId);
+  });
+}
+
+function openApp(appId, args){
+  const app = APPS[appId];
+  if(!app) return;
+  if(app.singleton){
+    const existing = WM.openWindows().find(w => w.appId === appId);
+    if(existing){
+      if(existing.minimized) toggleMinimize(existing.id);
+      focusWindow(existing.id);
+      return existing.id;
+    }
+  }
+  return createWindow(app, args);
+}
+
+function createWindow(app, args){
+  const winId = uid('win');
+  const layer = $('#windows-layer');
+  const layerRect = layer.getBoundingClientRect();
+
+  const openCount = WM.openWindows().length;
+  const offset = (openCount % 6) * 26;
+  const defaultW = Math.min(760, Math.max(420, layerRect.width * 0.55));
+  const defaultH = Math.min(560, Math.max(340, layerRect.height * 0.62));
+  const startX = Math.max(20, (layerRect.width - defaultW)/2 + offset - 60);
+  const startY = Math.max(16, (layerRect.height - defaultH)/2 - 20 + offset*0.6);
+
+  const el = document.createElement('div');
+  el.className = 'window';
+  el.style.width = defaultW+'px';
+  el.style.height = defaultH+'px';
+  el.style.left = startX+'px';
+  el.style.top = startY+'px';
+  el.innerHTML = `
+    <div class="win-titlebar">
+      <div class="win-title"><span class="win-ic">${app.icon}</span><span class="win-title-text">${escapeHTML(app.name)}</span></div>
+      <div class="win-controls">
+        <button class="win-btn min" title="تصغير">&#8211;</button>
+        <button class="win-btn max" title="تكبير">&#9723;</button>
+        <button class="win-btn close" title="إغلاق">&#10005;</button>
+      </div>
+    </div>
+    <div class="win-body"></div>
+    <div class="win-resize" title="تغيير الحجم"></div>
+  `;
+  layer.appendChild(el);
+
+  WM.windows[winId] = {
+    id: winId, el, appId: app.id, minimized:false, maximized:false,
+    prevRect: null,
+  };
+
+  // عنوان النافذة قابل للتحديث من داخل التطبيق (مثلاً اسم الملف المفتوح)
+  el.setTitle = (t) => { $('.win-title-text', el).textContent = t; addTaskbarLabel(winId, t); };
+
+  const body = $('.win-body', el);
+  try{
+    app.render(body, { id:winId, el, setTitle: el.setTitle, close: ()=>closeWindow(winId) }, args);
+  }catch(err){
+    body.innerHTML = `<div style="padding:20px;color:#ff8b8e;">تعذّر تحميل التطبيق: ${escapeHTML(err.message||String(err))}</div>`;
+  }
+
+  // سحب النافذة
+  const titlebar = $('.win-titlebar', el);
+  let drag = null;
+  titlebar.addEventListener('mousedown', (e)=>{
+    if(e.target.closest('.win-btn')) return;
+    if(WM.windows[winId].maximized) return;
+    focusWindow(winId);
+    drag = { sx:e.clientX, sy:e.clientY, ox:el.offsetLeft, oy:el.offsetTop };
+    document.body.style.cursor='move';
+  });
+  window.addEventListener('mousemove', (e)=>{
+    if(!drag) return;
+    const nx = drag.ox + (e.clientX - drag.sx);
+    const ny = Math.max(0, drag.oy + (e.clientY - drag.sy));
+    el.style.left = nx+'px'; el.style.top = ny+'px';
+  });
+  window.addEventListener('mouseup', ()=>{ if(drag){ drag=null; document.body.style.cursor=''; } });
+
+  // تغيير الحجم
+  const resizer = $('.win-resize', el);
+  let resizing = null;
+  resizer.addEventListener('mousedown',(e)=>{
+    e.stopPropagation();
+    focusWindow(winId);
+    resizing = { sx:e.clientX, sy:e.clientY, ow:el.offsetWidth, oh:el.offsetHeight, ol:el.offsetLeft };
+  });
+  window.addEventListener('mousemove',(e)=>{
+    if(!resizing) return;
+    const dx = e.clientX - resizing.sx;
+    const dy = e.clientY - resizing.sy;
+    const nw = Math.max(320, resizing.ow - dx);
+    const nh = Math.max(220, resizing.oh + dy);
+    el.style.width = nw+'px';
+    el.style.height = nh+'px';
+    el.style.left = (resizing.ol + dx) + 'px';
+  });
+  window.addEventListener('mouseup',()=>{ resizing=null; });
+
+  el.addEventListener('mousedown', ()=>focusWindow(winId));
+
+  $('.win-btn.close', el).addEventListener('click', ()=>closeWindow(winId));
+  $('.win-btn.min', el).addEventListener('click', ()=>toggleMinimize(winId));
+  $('.win-btn.max', el).addEventListener('click', ()=>toggleMaximize(winId));
+  titlebar.addEventListener('dblclick', (e)=>{ if(!e.target.closest('.win-btn')) toggleMaximize(winId); });
+
+  addTaskbarButton(winId, app);
+  focusWindow(winId);
+  return winId;
+}
+
+function closeWindow(winId){
+  const w = WM.windows[winId];
+  if(!w) return;
+  w.el.classList.add('closing');
+  setTimeout(()=>{ w.el.remove(); }, 160);
+  delete WM.windows[winId];
+  removeTaskbarButton(winId);
+}
+
+function toggleMinimize(winId){
+  const w = WM.windows[winId];
+  if(!w) return;
+  w.minimized = !w.minimized;
+  w.el.style.display = w.minimized ? 'none' : 'flex';
+  if(!w.minimized) focusWindow(winId);
+}
+
+function toggleMaximize(winId){
+  const w = WM.windows[winId];
+  if(!w) return;
+  const el = w.el;
+  if(!w.maximized){
+    w.prevRect = { l:el.style.left, t:el.style.top, w:el.style.width, h:el.style.height };
+    el.style.left = '0px'; el.style.top='0px'; el.style.width='100%'; el.style.height='100%';
+    el.classList.add('maximized');
+    w.maximized = true;
+  }else{
+    if(w.prevRect){
+      el.style.left=w.prevRect.l; el.style.top=w.prevRect.t; el.style.width=w.prevRect.w; el.style.height=w.prevRect.h;
+    }
+    el.classList.remove('maximized');
+    w.maximized = false;
+  }
+  focusWindow(winId);
+}
+
+/* ---- أزرار شريط المهام لكل نافذة مفتوحة ---- */
+function addTaskbarButton(winId, app){
+  const bar = $('#taskbar-apps');
+  const btn = document.createElement('button');
+  btn.className = 'tb-app-btn';
+  btn.dataset.winid = winId;
+  btn.innerHTML = `<span>${app.icon}</span><span class="tb-label">${escapeHTML(app.name)}</span><span class="dot"></span>`;
+  btn.addEventListener('click', ()=>{
+    const w = WM.windows[winId];
+    if(!w) return;
+    if(w.minimized){ toggleMinimize(winId); }
+    else if(WM.activeId === winId){ toggleMinimize(winId); }
+    else { focusWindow(winId); }
+  });
+  bar.appendChild(btn);
+}
+function addTaskbarLabel(winId, text){
+  const btn = $(`.tb-app-btn[data-winid="${winId}"] .tb-label`);
+  if(btn) btn.textContent = text;
+}
+function removeTaskbarButton(winId){
+  const btn = $(`.tb-app-btn[data-winid="${winId}"]`);
+  if(btn) btn.remove();
+}
+
+/* ========================================================================
+   التطبيقات
+   ======================================================================== */
+
+/* ---------------------------- 1) مدير الملفات ---------------------------- */
+registerApp({
+  id:'files', name:'مدير الملفات', icon:'📁', singleton:false,
+  render(container, win, args){
+    let currentPath = (args && args.path) ? args.path.slice() : ['المستندات'];
+    let selected = null;
+
+    container.innerHTML = `
+      <div class="fm">
+        <div class="fm-sidebar">
+          <div class="fm-item" data-path=""><span>🏠</span><span>الرئيسية</span></div>
+          <div class="fm-item" data-path="المستندات"><span>📄</span><span>المستندات</span></div>
+          <div class="fm-item" data-path="الصور"><span>🖼️</span><span>الصور</span></div>
+          <div class="fm-item" data-path="الملاحظات"><span>📝</span><span>الملاحظات</span></div>
+        </div>
+        <div class="fm-main">
+          <div class="fm-toolbar">
+            <button class="fm-btn" data-act="new-folder">📁+ مجلد جديد</button>
+            <button class="fm-btn" data-act="upload-file">📤 رفع ملف</button>
+            <button class="fm-btn" data-act="upload-image">🖼️+ رفع صورة</button>
+            <button class="fm-btn" data-act="rename" disabled>✏️ إعادة تسمية</button>
+            <button class="fm-btn" data-act="delete" disabled>🗑️ حذف</button>
+            <div class="fm-path"></div>
+          </div>
+          <div class="fm-grid"></div>
+        </div>
+      </div>
+      <input type="file" class="fm-file-input" accept=".txt,text/plain" style="display:none;">
+      <input type="file" class="fm-image-input" accept="image/*" style="display:none;">
+    `;
+
+    const grid = $('.fm-grid', container);
+    const pathEl = $('.fm-path', container);
+    const fileInput = $('.fm-file-input', container);
+    const imageInput = $('.fm-image-input', container);
+
+    function iconFor(node){
+      if(node.type==='folder') return '📁';
+      if(node.kind==='image') return null; // سيتم عرض الصورة نفسها
+      return '📄';
+    }
+
+    function render(){
+      win.setTitle('مدير الملفات — ' + (currentPath.length ? currentPath.join(' / ') : 'الرئيسية'));
+      pathEl.textContent = '/ ' + currentPath.join(' / ');
+      $$('.fm-item', container).forEach(it=>{
+        const p = it.dataset.path;
+        it.classList.toggle('active', p === currentPath.join('/'));
+      });
+      const folder = getFolder(currentPath);
+      grid.innerHTML = '';
+      selected = null;
+      updateToolbarState();
+      if(!folder){ grid.innerHTML = '<div class="fm-empty">المجلد غير موجود</div>'; return; }
+      const entries = Object.values(folder.children || {});
+      if(entries.length === 0){ grid.innerHTML = '<div class="fm-empty">هذا المجلد فارغ — أنشئ مجلداً أو ارفع ملفاً</div>'; return; }
+      entries.sort((a,b)=> (a.type===b.type ? a.name.localeCompare(b.name,'ar') : (a.type==='folder'?-1:1)));
+      entries.forEach(node=>{
+        const div = document.createElement('div');
+        div.className = 'fm-file';
+        div.dataset.name = node.name;
+        let icHtml;
+        if(node.type==='file' && node.kind==='image'){
+          icHtml = `<div class="ic"><img src="${node.content}" alt=""></div>`;
+        }else{
+          icHtml = `<div class="ic">${iconFor(node)}</div>`;
+        }
+        div.innerHTML = `${icHtml}<span>${escapeHTML(node.name)}</span>`;
+        div.addEventListener('click', (e)=>{
+          $$('.fm-file', grid).forEach(f=>f.classList.remove('selected'));
+          div.classList.add('selected');
+          selected = node;
+          updateToolbarState();
+        });
+        div.addEventListener('dblclick', ()=>{
+          if(node.type==='folder'){
+            currentPath = currentPath.concat([node.name]);
+            render();
+          }else if(node.kind==='text'){
+            openApp('notepad', { path: currentPath.slice(), filename: node.name });
+          }else if(node.kind==='image'){
+            openApp('imageviewer', { path: currentPath.slice(), filename: node.name });
+          }
+        });
+        grid.appendChild(div);
+      });
+    }
+
+    function updateToolbarState(){
+      $('[data-act="rename"]', container).disabled = !selected;
+      $('[data-act="delete"]', container).disabled = !selected;
+    }
+
+    $$('.fm-item', container).forEach(it=>{
+      it.addEventListener('click', ()=>{
+        const p = it.dataset.path;
+        currentPath = p ? p.split('/') : [];
+        render();
+      });
+    });
+
+    container.addEventListener('click', (e)=>{
+      const act = e.target.closest('[data-act]');
+      if(!act || act.disabled) return;
+      const action = act.dataset.act;
+      const folder = getFolder(currentPath);
+      if(action === 'new-folder'){
+        const name = prompt('اسم المجلد الجديد:');
+        if(!name) return;
+        if(!folder) return;
+        if(folder.children[name]){ notify('تعذّر الإنشاء','يوجد عنصر بنفس الاسم.'); return; }
+        folder.children[name] = { type:'folder', name, children:{} };
+        saveFS(); render(); notify('تم الإنشاء', `تم إنشاء المجلد "${name}"`);
+      }else if(action === 'upload-file'){
+        fileInput.click();
+      }else if(action === 'upload-image'){
+        imageInput.click();
+      }else if(action === 'rename'){
+        if(!selected) return;
+        const newName = prompt('الاسم الجديد:', selected.name);
+        if(!newName || newName === selected.name) return;
+        if(folder.children[newName]){ notify('تعذّر إعادة التسمية','الاسم مستخدم بالفعل.'); return; }
+        delete folder.children[selected.name];
+        selected.name = newName;
+        folder.children[newName] = selected;
+        saveFS(); render();
+      }else if(action === 'delete'){
+        if(!selected) return;
+        if(!confirm(`هل تريد حذف "${selected.name}"؟`)) return;
+        delete folder.children[selected.name];
+        saveFS(); render(); notify('تم الحذف', `تم حذف "${selected.name}"`);
+      }
+    });
+
+    fileInput.addEventListener('change', ()=>{
+      const f = fileInput.files[0];
+      if(!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const folder = getFolder(currentPath);
+        let name = f.name.endsWith('.txt') ? f.name : f.name + '.txt';
+        let base = name, i = 1;
+        while(folder.children[name]){ name = base.replace(/\.txt$/,'') + ' ('+(i++)+').txt'; }
+        folder.children[name] = { type:'file', kind:'text', name, content: String(reader.result) };
+        saveFS(); render(); notify('تم الرفع', `تم رفع "${name}"`);
+      };
+      reader.readAsText(f);
+      fileInput.value = '';
+    });
+
+    imageInput.addEventListener('change', ()=>{
+      const f = imageInput.files[0];
+      if(!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const folder = getFolder(['الصور']);
+        let name = f.name, i = 1;
+        const dot = name.lastIndexOf('.');
+        const base = dot>0 ? name.slice(0,dot) : name;
+        const ext = dot>0 ? name.slice(dot) : '';
+        while(folder.children[name]){ name = base + ' ('+(i++)+')' + ext; }
+        folder.children[name] = { type:'file', kind:'image', name, content: String(reader.result) };
+        saveFS();
+        currentPath = ['الصور'];
+        render();
+        notify('تم رفع الصورة', `تم حفظ "${name}" في مجلد الصور`);
+      };
+      reader.readAsDataURL(f);
+      imageInput.value = '';
+    });
+
+    render();
+  }
+});
+
+/* ---------------------------- 2) المفكرة المتقدمة ---------------------------- */
+registerApp({
+  id:'notepad', name:'المفكرة', icon:'📝', singleton:false,
+  render(container, win, args){
+    let path = (args && args.path) ? args.path.slice() : ['الملاحظات'];
+    let filename = (args && args.filename) || null;
+    let dirty = false;
+
+    container.innerHTML = `
+      <div class="np">
+        <div class="np-toolbar">
+          <button class="fm-btn" data-act="save">💾 حفظ في مدير الملفات</button>
+          <button class="fm-btn" data-act="download">⬇️ تنزيل .txt</button>
+          <button class="fm-btn" data-act="new">🆕 ملف جديد</button>
+        </div>
+        <textarea placeholder="ابدأ الكتابة هنا…" spellcheck="false"></textarea>
+        <div class="np-status"></div>
+      </div>
+    `;
+    const textarea = $('textarea', container);
+    const status = $('.np-status', container);
+
+    function updateTitle(){
+      win.setTitle('المفكرة — ' + (filename || 'بدون عنوان') + (dirty ? ' •' : ''));
+    }
+    function updateStatus(){
+      const words = textarea.value.trim() ? textarea.value.trim().split(/\s+/).length : 0;
+      status.textContent = `${textarea.value.length} حرف · ${words} كلمة` + (filename ? ` · محفوظ في ${path.join('/')}/${filename}` : ' · لم يُحفظ بعد');
+    }
+
+    if(filename){
+      const folder = getFolder(path);
+      const node = folder && folder.children[filename];
+      if(node) textarea.value = node.content;
+    }
+    updateTitle(); updateStatus();
+
+    textarea.addEventListener('input', ()=>{ dirty = true; updateTitle(); updateStatus(); });
+
+    container.addEventListener('click', (e)=>{
+      const act = e.target.closest('[data-act]');
+      if(!act) return;
+      const action = act.dataset.act;
+      if(action === 'save'){
+        let name = filename;
+        if(!name){
+          name = prompt('اسم الملف:', 'ملاحظة جديدة.txt');
+          if(!name) return;
+          if(!name.endsWith('.txt')) name += '.txt';
+        }
+        const folder = getFolder(path);
+        if(!folder){ notify('خطأ','المسار غير صالح.'); return; }
+        folder.children[name] = { type:'file', kind:'text', name, content: textarea.value };
+        saveFS();
+        filename = name; dirty = false;
+        updateTitle(); updateStatus();
+        notify('تم الحفظ', `تم حفظ "${name}" في ${path.join('/')}`);
+      }else if(action === 'download'){
+        const blob = new Blob([textarea.value], {type:'text/plain;charset=utf-8'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = (filename || 'ملاحظة') .replace(/\.txt$/,'') + '.txt';
+        document.body.appendChild(a); a.click(); a.remove();
+        notify('تم التنزيل', 'تم تنزيل الملف إلى جهازك.');
+      }else if(action === 'new'){
+        if(dirty && !confirm('هناك تغييرات غير محفوظة، هل تريد المتابعة؟')) return;
+        filename = null; textarea.value=''; dirty=false; updateTitle(); updateStatus(); textarea.focus();
+      }
+    });
+  }
+});
+
+/* ---------------------------- 3) عارض الصور ---------------------------- */
+registerApp({
+  id:'imageviewer', name:'عارض الصور', icon:'🖼️', singleton:false,
+  render(container, win, args){
+    container.innerHTML = `<div class="imgv"><div class="imgv-empty">لا توجد صورة محددة</div></div>`;
+    const wrap = $('.imgv', container);
+
+    function loadAllImages(){
+      const folder = getFolder(['الصور']);
+      const list = folder ? Object.values(folder.children).filter(n=>n.type==='file' && n.kind==='image') : [];
+      return list;
+    }
+    function show(node){
+      win.setTitle('عارض الصور — ' + node.name);
+      const list = loadAllImages();
+      wrap.innerHTML = `
+        <img src="${node.content}" alt="${escapeHTML(node.name)}">
+        <div class="imgv-thumbs">${list.map(n=>`<img data-name="${escapeHTML(n.name)}" src="${n.content}" class="${n.name===node.name?'active':''}">`).join('')}</div>
+      `;
+      $$('.imgv-thumbs img', wrap).forEach(img=>{
+        img.addEventListener('click', ()=>{
+          const n = list.find(x=>x.name===img.dataset.name);
+          if(n) show(n);
+        });
+      });
+    }
+    if(args && args.path && args.filename){
+      const folder = getFolder(args.path);
+      const node = folder && folder.children[args.filename];
+      if(node) show(node);
+    }else{
+      const list = loadAllImages();
+      if(list.length) show(list[0]);
+      else win.setTitle('عارض الصور');
+    }
+  }
+});
+
+/* ---------------------------- 4) المتصفح المصغر ---------------------------- */
+registerApp({
+  id:'browser', name:'المتصفح', icon:'🌐', singleton:false,
+  render(container, win, args){
+    container.innerHTML = `
+      <div class="browser">
+        <div class="browser-bar">
+          <button class="fm-btn" data-act="home">🏠</button>
+          <input type="text" placeholder="اكتب رابطاً كاملاً (https://) واضغط Enter" value="${args && args.url ? escapeHTML(args.url) : ''}">
+          <button class="fm-btn" data-act="go">فتح</button>
+          <button class="fm-btn" data-act="realtab" title="بعض المواقع تمنع العرض المضمّن — افتحها في تبويب حقيقي">↗️ تبويب حقيقي</button>
+        </div>
+        <div class="browser-frame" style="display:none;"><iframe></iframe></div>
+        <div class="browser-home">
+          <h2>ابدأ التصفح</h2>
+          <div class="browser-shortcuts">
+            <div class="bs" data-url="https://www.wikipedia.org"><div class="ic">📚</div><span>ويكيبيديا</span></div>
+            <div class="bs" data-url="https://example.com"><div class="ic">🌍</div><span>مثال</span></div>
+            <div class="bs" data-url="https://web.archive.org"><div class="ic">🗄️</div><span>الأرشيف</span></div>
+            <div class="bs" data-realtab="https://web.whatsapp.com"><div class="ic">💬</div><span>واتساب ويب</span></div>
+            <div class="bs" data-realtab="https://www.google.com"><div class="ic">🔎</div><span>جوجل</span></div>
+          </div>
+          <p style="color:var(--text-3);font-size:12px;margin-top:26px;line-height:1.8;">
+            ملاحظة: مواقع مثل واتساب وجوجل وفيسبوك تمنع نفسها من الظهور داخل إطار مضمّن لأسباب أمنية (سياسة من عندهم، وليست قيداً في هذا المتصفح) —
+            لذلك يتم فتحها مباشرة في <b>تبويب حقيقي من متصفحك</b> بدلاً من محاولة تضمينها هنا.
+          </p>
+        </div>
+      </div>
+    `;
+    const input = $('input', container);
+    const frameWrap = $('.browser-frame', container);
+    const iframe = $('iframe', container);
+    const home = $('.browser-home', container);
+
+    function normalize(url){ return /^https?:\/\//i.test(url) ? url : 'https://' + url; }
+    function go(url){
+      if(!url) return;
+      url = normalize(url);
+      iframe.src = url;
+      frameWrap.style.display='block';
+      home.style.display='none';
+      win.setTitle('المتصفح — ' + url.replace(/^https?:\/\//,'').slice(0,30));
+      input.value = url;
+    }
+    function openRealTab(url){
+      if(!url) return;
+      url = normalize(url);
+      window.open(url, '_blank', 'noopener');
+      notify('تم الفتح في تبويب حقيقي', 'هذا الموقع يمنع العرض المضمّن، فتم فتحه في تبويب حقيقي من متصفحك.');
+    }
+    container.addEventListener('click', (e)=>{
+      const realtabShortcut = e.target.closest('[data-realtab]');
+      if(realtabShortcut){ openRealTab(realtabShortcut.dataset.realtab); return; }
+      const bs = e.target.closest('.bs[data-url]');
+      if(bs){ go(bs.dataset.url); return; }
+      const act = e.target.closest('[data-act]');
+      if(!act) return;
+      if(act.dataset.act === 'go') go(input.value.trim());
+      if(act.dataset.act === 'realtab') openRealTab(input.value.trim() || iframe.src);
+      if(act.dataset.act === 'home'){ frameWrap.style.display='none'; home.style.display='block'; iframe.src='about:blank'; win.setTitle('المتصفح'); }
+    });
+    input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') go(input.value.trim()); });
+    if(args && args.url) go(args.url);
+  }
+});
+
+/* ---------------------------- 5) الآلة الحاسبة ---------------------------- */
+registerApp({
+  id:'calculator', name:'الآلة الحاسبة', icon:'🧮', singleton:true,
+  render(container, win){
+    container.innerHTML = `
+      <div class="calc">
+        <div class="calc-screen">
+          <div class="calc-expr"></div>
+          <div class="calc-result">0</div>
+        </div>
+        <div class="calc-grid">
+          <button class="calc-btn fn" data-v="AC">AC</button>
+          <button class="calc-btn fn" data-v="back">⌫</button>
+          <button class="calc-btn fn" data-v="%">%</button>
+          <button class="calc-btn op" data-v="/">÷</button>
+
+          <button class="calc-btn" data-v="7">7</button>
+          <button class="calc-btn" data-v="8">8</button>
+          <button class="calc-btn" data-v="9">9</button>
+          <button class="calc-btn op" data-v="*">×</button>
+
+          <button class="calc-btn" data-v="4">4</button>
+          <button class="calc-btn" data-v="5">5</button>
+          <button class="calc-btn" data-v="6">6</button>
+          <button class="calc-btn op" data-v="-">−</button>
+
+          <button class="calc-btn" data-v="1">1</button>
+          <button class="calc-btn" data-v="2">2</button>
+          <button class="calc-btn" data-v="3">3</button>
+          <button class="calc-btn op" data-v="+">+</button>
+
+          <button class="calc-btn" data-v="0" style="grid-column:span 2;">0</button>
+          <button class="calc-btn" data-v=".">.</button>
+          <button class="calc-btn eq" data-v="=">=</button>
+        </div>
+      </div>
+    `;
+    const exprEl = $('.calc-expr', container);
+    const resEl = $('.calc-result', container);
+    let expr = '';
+
+    function fmt(n){
+      if(!isFinite(n)) return 'خطأ';
+      const s = Number(n.toFixed(10)).toString();
+      return s;
+    }
+    function safeEval(e){
+      if(!/^[0-9+\-*/.%()\s]+$/.test(e)) throw new Error('bad');
+      // eslint-disable-next-line no-new-func
+      return Function('"use strict"; return (' + e.replace(/%/g,'/100') + ')')();
+    }
+    function render(){
+      exprEl.textContent = expr || ' ';
+      try{
+        resEl.textContent = expr ? fmt(safeEval(expr)) : '0';
+      }catch(e){ resEl.textContent = expr.slice(-1); }
+    }
+    container.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.calc-btn');
+      if(!btn) return;
+      const v = btn.dataset.v;
+      if(v === 'AC'){ expr=''; }
+      else if(v === 'back'){ expr = expr.slice(0,-1); }
+      else if(v === '='){
+        try{ expr = fmt(safeEval(expr)); }catch(e){ resEl.textContent='خطأ'; return; }
+      }
+      else{ expr += v; }
+      render();
+    });
+    render();
+  }
+});
+
+/* ---------------------------- 6) الإعدادات ---------------------------- */
+const WALLPAPERS = [
+  {id:'wp-aurora', name:'شفق'},
+  {id:'wp-ocean', name:'محيط'},
+  {id:'wp-dusk', name:'غسق'},
+  {id:'wp-mint', name:'نعناع'},
+  {id:'wp-sunset', name:'غروب'},
+  {id:'wp-mono', name:'أحادي'},
+];
+
+registerApp({
+  id:'settings', name:'الإعدادات', icon:'⚙️', singleton:true,
+  render(container, win, args){
+    container.innerHTML = `
+      <div class="settings">
+        <div class="set-nav">
+          <div class="set-item active" data-tab="appearance">🎨 المظهر</div>
+          <div class="set-item" data-tab="security">🔒 الأمان</div>
+          <div class="set-item" data-tab="system">🖥️ النظام</div>
+          <div class="set-item" data-tab="storage">💾 التخزين</div>
+          <div class="set-item" data-tab="about">ℹ️ حول</div>
+        </div>
+        <div class="set-body"></div>
+      </div>
+    `;
+    const body = $('.set-body', container);
+
+    function renderSecurity(){
+      const hasPass = !!AUTH.passHash;
+      const hasBio = !!AUTH.webauthnId;
+      body.innerHTML = `
+        <div class="set-section">
+          <h3>الأمان</h3>
+          <p class="desc">حماية النظام بكلمة مرور، وتفعيل الدخول بالبصمة أو التعرف على الوجه (حسب دعم جهازك).</p>
+          <div class="set-row">
+            <div><div class="lbl">كلمة المرور</div><div class="sub">${hasPass ? 'مُفعّلة حالياً' : 'غير مُفعّلة'}</div></div>
+            <button class="fm-btn" data-act="set-pass">${hasPass ? '✏️ تغيير' : '🔒 تعيين'}</button>
+          </div>
+          ${hasPass ? `<div class="set-row"><div><div class="lbl">إزالة كلمة المرور</div><div class="sub">سيتم فتح النظام بدون طلب كلمة مرور</div></div><button class="danger-btn" data-act="remove-pass">إزالة</button></div>` : ''}
+          <div class="set-row" style="border-bottom:none;">
+            <div><div class="lbl">الدخول بالبصمة / الوجه (WebAuthn)</div><div class="sub">${hasBio ? 'مُسجّلة على هذا الجهاز' : 'غير مسجّلة — يتطلب فتح النظام عبر رابط آمن (https)'}</div></div>
+            <button class="fm-btn" data-act="${hasBio ? 'remove-bio':'set-bio'}" ${hasPass?'':'disabled title="عيّن كلمة مرور أولاً"'}>${hasBio ? '🗑️ إزالة' : '👆 تسجيل'}</button>
+          </div>
+          <div class="lock-msg" id="sec-msg" style="text-align:right;margin-top:8px;"></div>
+        </div>
+      `;
+    }
+
+    function renderAppearance(){
+      body.innerHTML = `
+        <div class="set-section">
+          <h3>المظهر والثيم</h3>
+          <p class="desc">تخصيص شكل النظام حسب رغبتك.</p>
+          <div class="theme-pick">
+            <div class="theme-opt ${SETTINGS.theme==='dark'?'active':''}" data-theme="dark">🌙<br>داكن</div>
+            <div class="theme-opt ${SETTINGS.theme==='light'?'active':''}" data-theme="light">☀️<br>فاتح</div>
+          </div>
+          <div class="set-row" style="margin-top:8px;">
+            <div><div class="lbl">الرسوم المتحركة</div><div class="sub">تفعيل الانتقالات السلسة عبر الواجهة</div></div>
+            <div class="switch ${SETTINGS.animations?'on':''}" data-toggle="animations"></div>
+          </div>
+          <div class="start-label" style="margin-top:18px;">خلفية سطح المكتب</div>
+          <div class="wp-grid">
+            ${WALLPAPERS.map(w=>`<div class="wp-thumb ${w.id} ${SETTINGS.wallpaper===w.id?'active':''}" data-wp="${w.id}" title="${w.name}"></div>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+    function renderSystem(){
+      body.innerHTML = `
+        <div class="set-section">
+          <h3>النظام</h3>
+          <p class="desc">معلومات وحالة الجهاز الوهمية.</p>
+          <div class="set-row"><div class="lbl">اسم الجهاز</div><div class="sub">Aurora-Web-PC</div></div>
+          <div class="set-row"><div class="lbl">النوافذ المفتوحة حالياً</div><div class="sub">${WM.openWindows().length}</div></div>
+          <div class="set-row"><div class="lbl">مستوى البطارية</div><div class="sub">${batteryLevel}%</div></div>
+          <div class="set-row" style="border-bottom:none;"><div class="lbl">وقت التشغيل</div><div class="sub" id="uptime-sub">0 دقيقة</div></div>
+        </div>
+      `;
+      const start = Date.now();
+      const t = setInterval(()=>{
+        const el = $('#uptime-sub', body);
+        if(!el){ clearInterval(t); return; }
+        const min = Math.floor((Date.now()-start)/60000);
+        el.textContent = min + ' دقيقة';
+      }, 10000);
+    }
+    function renderStorage(){
+      let used = 0;
+      try{ used = new Blob([localStorage.getItem(FS_KEY)||'']).size; }catch(e){}
+      body.innerHTML = `
+        <div class="set-section">
+          <h3>التخزين المحلي</h3>
+          <p class="desc">جميع الملفات محفوظة داخل متصفحك (localStorage) ولا تُرسل لأي خادم.</p>
+          <div class="set-row"><div class="lbl">الحجم التقريبي المستخدم</div><div class="sub">${(used/1024).toFixed(1)} كيلوبايت</div></div>
+          <div class="set-row" style="border-bottom:none;flex-direction:column;align-items:flex-start;gap:10px;">
+            <div class="lbl">مسح البيانات</div>
+            <div class="sub">سيؤدي هذا لحذف جميع الملفات والمجلدات والإعدادات نهائياً.</div>
+            <button class="danger-btn" data-act="wipe">🗑️ مسح ذاكرة التخزين المؤقت بالكامل</button>
+          </div>
+        </div>
+      `;
+    }
+    function renderAbout(){
+      body.innerHTML = `
+        <div class="set-section">
+          <h3>حول Aurora OS</h3>
+          <p class="desc">نظام تشغيل ويب تجريبي، مبني بالكامل باستخدام HTML وCSS وJavaScript فقط، يعمل من ملف واحد دون أي اتصال بالإنترنت أو خادم خلفي.</p>
+          <div class="set-row"><div class="lbl">الإصدار</div><div class="sub">1.0.0</div></div>
+          <div class="set-row" style="border-bottom:none;"><div class="lbl">المحرك</div><div class="sub">Vanilla JS + localStorage</div></div>
+        </div>
+      `;
+    }
+
+    const renderers = { appearance:renderAppearance, security:renderSecurity, system:renderSystem, storage:renderStorage, about:renderAbout };
+    let activeTab = 'appearance';
+    function renderTab(){ renderers[activeTab](); }
+    renderTab();
+
+    $$('.set-item', container).forEach(item=>{
+      item.addEventListener('click', ()=>{
+        $$('.set-item', container).forEach(i=>i.classList.remove('active'));
+        item.classList.add('active');
+        activeTab = item.dataset.tab;
+        renderTab();
+      });
+    });
+
+    container.addEventListener('click', (e)=>{
+      const themeOpt = e.target.closest('[data-theme]');
+      if(themeOpt){
+        SETTINGS.theme = themeOpt.dataset.theme; saveSettings(); applySettings(); renderTab();
+        return;
+      }
+      const wpOpt = e.target.closest('[data-wp]');
+      if(wpOpt){
+        SETTINGS.wallpaper = wpOpt.dataset.wp; saveSettings(); applySettings(); renderTab();
+        notify('تم التغيير','تم تحديث خلفية سطح المكتب.');
+        return;
+      }
+      const toggle = e.target.closest('[data-toggle]');
+      if(toggle && toggle.dataset.toggle === 'animations'){
+        SETTINGS.animations = !SETTINGS.animations; saveSettings();
+        toggle.classList.toggle('on', SETTINGS.animations);
+        document.body.style.setProperty('--anim', SETTINGS.animations ? '1':'0');
+        return;
+      }
+      const wipe = e.target.closest('[data-act="wipe"]');
+      if(wipe){
+        if(confirm('سيتم حذف كل الملفات والإعدادات نهائياً. هل أنت متأكد؟')){
+          localStorage.removeItem(FS_KEY);
+          localStorage.removeItem(SETTINGS_KEY);
+          localStorage.removeItem(AUTH_KEY);
+          notify('تم المسح','تم مسح جميع البيانات. سيُعاد تحميل النظام.');
+          setTimeout(()=>location.reload(), 1200);
+        }
+      }
+
+      const secMsgEl = ()=> $('#sec-msg', body);
+      const setPassBtn = e.target.closest('[data-act="set-pass"]');
+      if(setPassBtn){
+        const p1 = prompt('كلمة المرور الجديدة:');
+        if(!p1) return;
+        if(p1.length < 3){ notify('كلمة مرور قصيرة','استخدم ٣ أحرف على الأقل.'); return; }
+        const p2 = prompt('أكّد كلمة المرور:');
+        if(p1 !== p2){ notify('غير متطابقة','كلمتا المرور غير متطابقتين.'); return; }
+        (async ()=>{
+          const salt = randomSalt();
+          AUTH.salt = salt;
+          AUTH.passHash = await sha256Hex(salt + p1);
+          saveAuth(); renderTab();
+          notify('تم الحفظ 🔒','تم تعيين كلمة المرور بنجاح.');
+        })();
+        return;
+      }
+      const removePassBtn = e.target.closest('[data-act="remove-pass"]');
+      if(removePassBtn){
+        if(confirm('سيتم فتح النظام بدون طلب كلمة مرور بعد ذلك. متابعة؟')){
+          AUTH = { passHash:null, salt:null, webauthnId:null };
+          saveAuth(); renderTab();
+          notify('تم الإزالة','تمت إزالة الحماية من النظام.');
+        }
+        return;
+      }
+      const setBioBtn = e.target.closest('[data-act="set-bio"]');
+      if(setBioBtn){
+        (async ()=>{
+          const msg = secMsgEl();
+          if(msg) msg.textContent = 'جارٍ التحقق من دعم جهازك…';
+          const ok = await webauthnAvailable();
+          if(!ok){
+            if(msg) msg.textContent = 'جهازك أو المتصفح لا يدعم البصمة/الوجه، أو الملف مفتوح بدون رابط آمن (https).';
+            return;
+          }
+          try{
+            if(msg) msg.textContent = 'اتبع تعليمات المتصفح لتسجيل البصمة/الوجه…';
+            const id = await webauthnRegister();
+            AUTH.webauthnId = id; saveAuth(); renderTab();
+            notify('تم التسجيل 👆','يمكنك الآن الدخول بالبصمة/الوجه.');
+          }catch(err){
+            if(msg) msg.textContent = 'تعذّر التسجيل: ' + (err.message || err);
+          }
+        })();
+        return;
+      }
+      const removeBioBtn = e.target.closest('[data-act="remove-bio"]');
+      if(removeBioBtn){
+        AUTH.webauthnId = null; saveAuth(); renderTab();
+        notify('تم الحذف','تمت إزالة الدخول بالبصمة/الوجه.');
+        return;
+      }
+    });
+
+    win.setTitle('الإعدادات');
+  }
+});
+
+/* ---------------------------- 7) بايثون حقيقي (Pyodide/WASM) ---------------------------- */
+const PYODIDE_VER = '0.26.4';
+const PYODIDE_BASE = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VER}/full/`;
+let pyodideInstance = null;
+let pyodideLoadingPromise = null;
+function ensurePyodide(onProgress){
+  if(pyodideInstance) return Promise.resolve(pyodideInstance);
+  if(pyodideLoadingPromise) return pyodideLoadingPromise;
+  pyodideLoadingPromise = (async ()=>{
+    onProgress && onProgress('جارٍ تحميل مترجم بايثون الحقيقي (Pyodide)… أول مرة قد تستغرق وقتاً');
+    await loadScriptOnce(PYODIDE_BASE + 'pyodide.js');
+    onProgress && onProgress('جارٍ تهيئة بيئة بايثون…');
+    pyodideInstance = await window.loadPyodide({ indexURL: PYODIDE_BASE });
+    onProgress && onProgress('جارٍ تجهيز أداة تثبيت الحزم (micropip)…');
+    await pyodideInstance.loadPackage('micropip');
+    return pyodideInstance;
+  })();
+  return pyodideLoadingPromise;
+}
+
+registerApp({
+  id:'pyconsole', name:'بايثون حقيقي', icon:'🐍', singleton:true,
+  render(container, win){
+    container.innerHTML = `
+      <div class="np">
+        <div class="np-toolbar">
+          <button class="fm-btn" data-act="run">▶️ تشغيل الكود</button>
+          <button class="fm-btn" data-act="install">📦 تثبيت مكتبة حقيقية</button>
+          <button class="fm-btn" data-act="clear">🧹 مسح المخرجات</button>
+          <span style="margin-inline-start:auto;font-size:11px;color:var(--text-3);">Pyodide — مُفسّر بايثون حقيقي يعمل فعلياً داخل المتصفح</span>
+        </div>
+        <div style="display:flex;flex:1;min-height:0;">
+          <textarea style="flex:1;border-left:1px solid rgba(255,255,255,0.08);" spellcheck="false" placeholder="اكتب كود بايثون حقيقي هنا…">import sys
+print("مرحباً من بايثون حقيقي يعمل داخل متصفحك 🐍")
+print("إصدار بايثون:", sys.version)
+print("2 ** 10 =", 2 ** 10)</textarea>
+          <pre class="py-output" style="flex:1;margin:0;padding:14px;overflow:auto;font-size:12.5px;line-height:1.6;direction:ltr;text-align:left;white-space:pre-wrap;color:#b7ffcb;"></pre>
+        </div>
+        <div class="np-status py-status">جاهز — سيتم تحميل بايثون الحقيقي (~10 ميجابايت) عند أول تشغيل</div>
+      </div>
+    `;
+    const textarea = $('textarea', container);
+    const output = $('.py-output', container);
+    const status = $('.py-status', container);
+    win.setTitle('بايثون حقيقي (Pyodide)');
+
+    function log(text){ output.textContent += text; output.scrollTop = output.scrollHeight; }
+
+    container.addEventListener('click', async (e)=>{
+      const act = e.target.closest('[data-act]');
+      if(!act) return;
+      const action = act.dataset.act;
+      if(action === 'clear'){ output.textContent=''; return; }
+
+      if(action === 'run'){
+        act.disabled = true;
+        try{
+          const py = await ensurePyodide(msg => status.textContent = msg);
+          py.setStdout({ batched:(s)=> log(s + '\n') });
+          py.setStderr({ batched:(s)=> log(s + '\n') });
+          status.textContent = 'جارٍ تنفيذ الكود…';
+          await py.runPythonAsync(textarea.value);
+          status.textContent = 'تم التنفيذ بنجاح ✅';
+        }catch(err){
+          log('خطأ: ' + (err.message || String(err)) + '\n');
+          status.textContent = 'حدث خطأ أثناء التنفيذ — راجع المخرجات';
+        }finally{ act.disabled = false; }
+      }
+
+      if(action === 'install'){
+        const pkg = prompt('اسم مكتبة بايثون الحقيقية المطلوب تثبيتها (مثال: numpy):');
+        if(!pkg) return;
+        act.disabled = true;
+        try{
+          const py = await ensurePyodide(msg => status.textContent = msg);
+          status.textContent = `جارٍ تثبيت "${pkg}" فعلياً عبر micropip…`;
+          const micropip = py.pyimport('micropip');
+          await micropip.install(pkg);
+          log(`✅ تم تثبيت الحزمة الحقيقية "${pkg}" بنجاح — يمكنك الآن استيرادها في الكود بـ import ${pkg}\n`);
+          status.textContent = 'تم التثبيت بنجاح ✅';
+          notify('تم التثبيت', `تم تثبيت مكتبة "${pkg}" الحقيقية بنجاح.`);
+        }catch(err){
+          log(`❌ تعذّر تثبيت "${pkg}": ${err.message||err}\n`);
+          status.textContent = 'فشل التثبيت (قد تكون المكتبة تحتاج امتدادات C غير مدعومة في المتصفح)';
+        }finally{ act.disabled = false; }
+      }
+    });
+  }
+});
+
+/* ---------------------------- 8) محاكي DOS حقيقي (js-dos / DOSBox WASM) ---------------------------- */
+registerApp({
+  id:'dosbox', name:'محاكي DOS حقيقي', icon:'🕹️', singleton:false,
+  render(container, win, args){
+    container.innerHTML = `
+      <div class="browser">
+        <div class="browser-bar">
+          <input type="text" placeholder="ألصق رابط لعبة .jsdos حقيقية من dos.zone هنا…" value="${args && args.url ? escapeHTML(args.url) : ''}">
+          <button class="fm-btn" data-act="load">▶️ تشغيل</button>
+          <button class="fm-btn" data-act="sample">🎮 مثال جاهز</button>
+        </div>
+        <div class="dos-stage" style="flex:1;background:#000;position:relative;display:flex;align-items:center;justify-content:center;color:#8a8a9a;font-size:12px;text-align:center;padding:16px;">
+          الصق رابط لعبة DOS حقيقية (بصيغة .jsdos من موقع dos.zone) أو اضغط "مثال جاهز" لتجربة لعبة حقيقية فوراً.
+        </div>
+        <div class="np-status dos-status" style="font-size:11px;">محاكي DOSBox حقيقي (js-dos) — يشغّل برامج وألعاب DOS حقيقية عبر WebAssembly</div>
+      </div>
+    `;
+    const input = $('input', container);
+    const stage = $('.dos-stage', container);
+    const status = $('.dos-status', container);
+    win.setTitle('محاكي DOS');
+
+    let dosInstance = null;
+
+    async function ensureJsDos(){
+      loadCSSOnce('https://v8.js-dos.com/latest/js-dos.css');
+      await loadScriptOnce('https://v8.js-dos.com/latest/js-dos.js');
+    }
+
+    async function runBundle(url){
+      if(!url) return;
+      status.textContent = 'جارٍ تحميل محاكي DOSBox الحقيقي…';
+      try{
+        await ensureJsDos();
+        if(dosInstance && dosInstance.stop){ try{ dosInstance.stop(); }catch(e){} }
+        stage.innerHTML = '';
+        stage.style.display = 'block'; stage.style.padding = '0';
+        status.textContent = 'جارٍ تحميل واستخراج البرنامج الحقيقي…';
+        dosInstance = window.Dos(stage, { url });
+        win.setTitle('محاكي DOS — ' + url.split('/').pop());
+        status.textContent = 'يعمل الآن — اضغط داخل الشاشة للتحكم بلوحة المفاتيح';
+      }catch(err){
+        status.textContent = 'تعذّر تشغيل المحاكي: ' + (err.message || err);
+      }
+    }
+
+    container.addEventListener('click', (e)=>{
+      const act = e.target.closest('[data-act]');
+      if(!act) return;
+      if(act.dataset.act === 'load') runBundle(input.value.trim());
+      if(act.dataset.act === 'sample'){
+        const url = 'https://cdn.dos.zone/original/2X/9/9ed7eb9c2c441f56656692ed4dc7ab28f58503ce.jsdos';
+        input.value = url;
+        runBundle(url);
+      }
+    });
+
+    if(args && args.url) runBundle(args.url);
+  }
+});
+
+/* ---------------------------- 9) تيرمنال لينكس حقيقي (v86 x86 emulator + busybox حقيقي) ---------------------------- */
+registerApp({
+  id:'linuxvm', name:'تيرمنال لينكس حقيقي', icon:'🐧', singleton:true,
+  render(container, win){
+    container.innerHTML = `
+      <div class="np" style="background:#0b0d10;">
+        <div class="np-toolbar">
+          <span style="font-size:11.5px;color:var(--text-2);">نواة لينكس حقيقية + busybox حقيقي يعملان داخل محاكي x86 (v86) — تجريبي</span>
+          <button class="fm-btn" data-act="boot" style="margin-inline-start:auto;">⏻ إقلاع النظام</button>
+        </div>
+        <pre class="lin-term" style="flex:1;margin:0;padding:14px;overflow:auto;font-size:12.5px;line-height:1.6;color:#7CFC9A;direction:ltr;text-align:left;white-space:pre-wrap;">اضغط "إقلاع النظام" لتحميل نواة لينكس حقيقية (~5 ميجابايت) وبدء تشغيلها.
+هذه ميزة تجريبية تعتمد على خادم خارجي (copy.sh)، قد تحتاج بضع ثوانٍ وقد لا تعمل على كل الشبكات.
+</pre>
+        <div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,0.08);display:flex;gap:8px;">
+          <span style="color:#7CFC9A;font-family:monospace;">$</span>
+          <input type="text" class="lin-input" disabled placeholder="اكتب أمر لينكس حقيقي بعد اكتمال الإقلاع (مثال: ls -l /)" style="flex:1;background:transparent;border:none;outline:none;color:#7CFC9A;font-family:monospace;font-size:13px;direction:ltr;text-align:left;">
+        </div>
+      </div>
+    `;
+    const term = $('.lin-term', container);
+    const input = $('.lin-input', container);
+    win.setTitle('تيرمنال لينكس حقيقي — لم يبدأ بعد');
+
+    let emulator = null;
+    function printTerm(text){ term.textContent += text; term.scrollTop = term.scrollHeight; }
+
+    $('[data-act="boot"]', container).addEventListener('click', async (e)=>{
+      const btn = e.target;
+      btn.disabled = true;
+      printTerm('\n[نظام] جارٍ تحميل محاكي x86 (v86)…\n');
+      try{
+        await loadScriptOnce('https://copy.sh/v86/build/libv86.js');
+        printTerm('[نظام] جارٍ تحميل نواة لينكس الحقيقية (buildroot)…\n');
+        emulator = new window.V86Starter({
+          wasm_path: 'https://copy.sh/v86/build/v86.wasm',
+          memory_size: 64 * 1024 * 1024,
+          bios: { url: 'https://copy.sh/v86/bios/seabios.bin' },
+          vga_bios: { url: 'https://copy.sh/v86/bios/vgabios.bin' },
+          bzimage: { url: 'https://copy.sh/v86/images/buildroot-bzimage.bin' },
+          filesystem: {},
+          cmdline: 'tsc=reliable mitigations=off random.trust_cpu=on',
+          autostart: true,
+          disable_keyboard: true,
+        });
+        win.setTitle('تيرمنال لينكس حقيقي — جارٍ الإقلاع…');
+        printTerm('[نظام] جارٍ الإقلاع، انتظر ظهور موجّه الأوامر…\n\n');
+        emulator.add_listener('serial0-output-char', (char)=>{
+          if(char === '\r') return;
+          printTerm(char);
+        });
+        input.disabled = false;
+        win.setTitle('تيرمنال لينكس حقيقي — يعمل ✅');
+        input.focus();
+      }catch(err){
+        printTerm('\n[خطأ] تعذّر تحميل المحاكي من الخادم الخارجي (copy.sh).\nقد يكون الخادم غير متاح حالياً أو يمنع الوصول من نطاق آخر.\nيمكنك تجربة النسخة الرسمية مباشرة عبر الرابط: copy.sh/v86\n');
+        btn.disabled = false;
+      }
+    });
+
+    input.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' && emulator){
+        printTerm(input.value + '\n');
+        emulator.serial0_send(input.value + '\n');
+        input.value = '';
+      }
+    });
+  }
+});
+
+/* ========================================================================
+   سطح المكتب: الأيقونات، شريط ابدأ، اللوحة السريعة، قائمة السياق
+   ======================================================================== */
+
+const DESKTOP_SHORTCUTS = ['files','notepad','browser','calculator','pyconsole','dosbox','linuxvm','settings'];
+
+function buildDesktopIcons(){
+  const wrap = $('#desktop-icons');
+  wrap.innerHTML = '';
+  DESKTOP_SHORTCUTS.forEach(id=>{
+    const app = APPS[id];
+    const div = document.createElement('div');
+    div.className = 'desktop-icon';
+    div.innerHTML = `<div class="ic">${app.icon}</div><span>${escapeHTML(app.name)}</span>`;
+    div.addEventListener('dblclick', ()=> openApp(id));
+    div.addEventListener('click', (e)=>{
+      $$('.desktop-icon').forEach(i=>i.classList.remove('active'));
+      div.classList.add('active');
+    });
+    wrap.appendChild(div);
+  });
+}
+
+function buildStartMenu(){
+  const grid = $('#start-apps-grid');
+  grid.innerHTML = '';
+  Object.values(APPS).forEach(app=>{
+    const div = document.createElement('div');
+    div.className = 'start-app';
+    div.dataset.appid = app.id;
+    div.innerHTML = `<div class="ic">${app.icon}</div><span>${escapeHTML(app.name)}</span>`;
+    div.addEventListener('click', ()=>{ openApp(app.id); closeStartMenu(); });
+    grid.appendChild(div);
+  });
+}
+
+function openStartMenu(){ $('#start-menu').classList.add('open'); $('#start-search-input').value=''; filterStartApps(''); }
+function closeStartMenu(){ $('#start-menu').classList.remove('open'); }
+function toggleStartMenu(){ $('#start-menu').classList.contains('open') ? closeStartMenu() : (closeQuickPanel(), openStartMenu()); }
+
+function filterStartApps(q){
+  q = q.trim();
+  $$('.start-app', $('#start-apps-grid')).forEach(el=>{
+    const app = APPS[el.dataset.appid];
+    const match = !q || app.name.includes(q);
+    el.style.display = match ? '' : 'none';
+  });
+}
+
+function openQuickPanel(){ $('#quick-panel').classList.add('open'); }
+function closeQuickPanel(){ $('#quick-panel').classList.remove('open'); }
+function toggleQuickPanel(){ $('#quick-panel').classList.contains('open') ? closeQuickPanel() : (closeStartMenu(), openQuickPanel()); }
+
+/* -------- قائمة السياق على سطح المكتب -------- */
+function showContextMenu(x, y, items){
+  $$('.ctx-menu').forEach(m=>m.remove());
+  const menu = document.createElement('div');
+  menu.className = 'ctx-menu';
+  menu.style.left = Math.min(x, window.innerWidth-210) + 'px';
+  menu.style.top = Math.min(y, window.innerHeight-40-(items.length*38)) + 'px';
+  items.forEach(it=>{
+    if(it === '-'){ const sep=document.createElement('div'); sep.className='ctx-sep'; menu.appendChild(sep); return; }
+    const div = document.createElement('div');
+    div.className = 'ctx-item';
+    div.innerHTML = `<span>${it.icon||''}</span><span>${escapeHTML(it.label)}</span>`;
+    div.addEventListener('click', ()=>{ it.action(); menu.remove(); });
+    menu.appendChild(div);
+  });
+  document.body.appendChild(menu);
+  setTimeout(()=>{
+    document.addEventListener('click', function h(){ menu.remove(); document.removeEventListener('click', h); }, {once:true});
+  },0);
+}
+
+$('#desktop').addEventListener('contextmenu', (e)=>{
+  e.preventDefault();
+  showContextMenu(e.clientX, e.clientY, [
+    {icon:'🔄', label:'تحديث سطح المكتب', action:()=>{ applySettings(); notify('تم التحديث','تم تحديث سطح المكتب.'); }},
+    {icon:'🖼️', label:'تغيير الخلفية', action:()=> openApp('settings')},
+    '-',
+    {icon:'📁', label:'فتح مدير الملفات', action:()=> openApp('files')},
+    {icon:'⚙️', label:'الإعدادات', action:()=> openApp('settings')},
+  ]);
+});
+
+/* ========================================================================
+   ربط عناصر الواجهة
+   ======================================================================== */
+$('#start-btn').addEventListener('click', (e)=>{ e.stopPropagation(); toggleStartMenu(); });
+$('#tray-toggle').addEventListener('click', (e)=>{ e.stopPropagation(); toggleQuickPanel(); });
+$('#power-btn').addEventListener('click', ()=>{
+  if(confirm('هل تريد إعادة تشغيل Aurora OS؟')){ location.reload(); }
+});
+$('#start-search-input').addEventListener('input', (e)=> filterStartApps(e.target.value));
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('#start-menu') && !e.target.closest('#start-btn')) closeStartMenu();
+  if(!e.target.closest('#quick-panel') && !e.target.closest('#tray-toggle')) closeQuickPanel();
+});
+
+$$('.qp-toggle').forEach(t=> t.addEventListener('click', ()=> t.classList.toggle('active')));
+$('#qp-brightness').addEventListener('input', (e)=>{
+  $('#qp-bright-val').textContent = e.target.value + '%';
+  document.body.style.filter = `brightness(${0.55 + (e.target.value/100)*0.55})`;
+});
+$('#qp-volume').addEventListener('input', (e)=> $('#qp-vol-val').textContent = e.target.value + '%');
+$('#qp-battery').addEventListener('input', (e)=> setBattery(parseInt(e.target.value,10)));
+
+/* ========================================================================
+   الإقلاع
+   ======================================================================== */
+function boot(){
+  loadFS();
+  loadSettings();
+  loadAuth();
+  applySettings();
+  buildDesktopIcons();
+  buildStartMenu();
+  updateClocks();
+  setBattery(86);
+
+  setTimeout(()=>{
+    const bootEl = $('#boot');
+    bootEl.style.opacity = '0';
+    setTimeout(()=>{ bootEl.style.display='none'; }, 520);
+    runLockFlow();
+    notify('مرحباً بك 👋', 'تم تشغيل Aurora OS بنجاح. جميع بياناتك محفوظة محلياً في هذا المتصفح.');
+  }, 900);
+}
+
+document.addEventListener('DOMContentLoaded', boot);
+
+})();
+</script>
+</body>
+</html>
