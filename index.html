@@ -404,6 +404,30 @@ html[dir=rtl] .switch.on::after{transform:translateX(-20px);}
   #start-menu{width:94vw;}
   .start-apps{grid-template-columns:repeat(3,1fr);}
 }
+
+/* ===================== زرار النسخ/اللصق العائم ===================== */
+#clip-fab{
+  position:fixed;left:16px;bottom:calc(var(--taskbar-h) + 14px);z-index:8000;
+  width:50px;height:50px;border-radius:50%;border:none;cursor:pointer;
+  background:var(--glass-bg-strong);backdrop-filter:blur(20px);border:1px solid var(--glass-border);
+  box-shadow:var(--glass-shadow);font-size:20px;display:flex;align-items:center;justify-content:center;
+  color:var(--text-1);
+}
+#clip-fab:hover{background:rgba(255,255,255,0.24);}
+#clip-panel{
+  position:fixed;left:16px;bottom:calc(var(--taskbar-h) + 72px);z-index:8000;
+  width:180px;padding:10px;border-radius:14px;background:var(--glass-bg-strong);
+  backdrop-filter:blur(22px);border:1px solid var(--glass-border);box-shadow:var(--glass-shadow);
+  display:none;flex-direction:column;gap:6px;
+}
+#clip-panel.open{display:flex;}
+#clip-panel button{
+  background:rgba(255,255,255,0.08);border:1px solid var(--glass-border);color:var(--text-1);
+  border-radius:9px;padding:9px 10px;font-size:12.5px;cursor:pointer;text-align:right;font-family:var(--font);
+}
+#clip-panel button:hover{background:rgba(255,255,255,0.18);}
+#clip-panel .clip-status{font-size:10.5px;color:var(--text-3);text-align:center;min-height:14px;}
+
 </style>
 </head>
 <body>
@@ -492,11 +516,19 @@ html[dir=rtl] .switch.on::after{transform:translateX(-20px);}
 
 <div id="notif-layer"></div>
 
+<button id="clip-fab" title="النسخ واللصق">📋</button>
+<div id="clip-panel">
+  <button data-act="copy">📄 نسخ</button>
+  <button data-act="paste">📥 لصق</button>
+  <div class="clip-status" id="clip-status"></div>
+</div>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import {
     getAuth, onAuthStateChanged, signInWithEmailAndPassword,
-    createUserWithEmailAndPassword, signOut
+    createUserWithEmailAndPassword, signOut,
+    sendEmailVerification, reload
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, setDoc
@@ -521,8 +553,17 @@ html[dir=rtl] .switch.on::after{transform:translateX(-20px);}
     auth: fbAuth,
     ready: true,
     onAuthStateChanged(cb){ return onAuthStateChanged(fbAuth, cb); },
-    signIn(email, pass){ return signInWithEmailAndPassword(fbAuth, email, pass); },
-    signUp(email, pass){ return createUserWithEmailAndPassword(fbAuth, email, pass); },
+    async signIn(email, pass){
+      const cred = await signInWithEmailAndPassword(fbAuth, email, pass);
+      return cred;
+    },
+    async signUp(email, pass){
+      const cred = await createUserWithEmailAndPassword(fbAuth, email, pass);
+      await sendEmailVerification(cred.user);
+      return cred;
+    },
+    resendVerification(){ return sendEmailVerification(fbAuth.currentUser); },
+    async refreshUser(){ await reload(fbAuth.currentUser); return fbAuth.currentUser; },
     signOutUser(){ return signOut(fbAuth); },
     async loadUserData(uid){
       const snap = await getDoc(doc(fbDb, 'users', uid));
@@ -1606,6 +1647,78 @@ registerApp({
   }
 });
 
+/* ---------------------------- 5.5) المساعد الذكي (Aurora Assistant — Gemini حقيقي) ---------------------------- */
+const AI_WORKER_URL = 'https://restless-brook-77ca.lilyyx785.workers.dev';
+
+registerApp({
+  id:'aiassistant', name:'Aurora Assistant', icon:'✨', singleton:true,
+  render(container, win){
+    container.innerHTML = `
+      <div class="np" style="background:rgba(0,0,0,0.06);">
+        <div class="np-toolbar">
+          <span style="font-size:12px;color:var(--text-2);">✨ مساعد ذكي حقيقي (Gemini)</span>
+          <button class="fm-btn" data-act="clear" style="margin-inline-start:auto;">🧹 محادثة جديدة</button>
+        </div>
+        <div class="ai-chat" style="flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px;"></div>
+        <div style="display:flex;gap:8px;padding:10px 12px;border-top:1px solid rgba(255,255,255,0.08);">
+          <input type="text" class="ai-input" placeholder="اكتب رسالتك هنا…" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid var(--glass-border);border-radius:20px;padding:10px 16px;color:var(--text-1);outline:none;font-size:13px;font-family:var(--font);">
+          <button class="fm-btn" data-act="send">➤ إرسال</button>
+        </div>
+      </div>
+    `;
+    win.setTitle('Aurora Assistant');
+    const chat = $('.ai-chat', container);
+    const input = $('.ai-input', container);
+    let history = [];
+    let sending = false;
+
+    function bubble(role, text){
+      const div = document.createElement('div');
+      const isUser = role === 'user';
+      div.style.cssText = `max-width:78%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.6;white-space:pre-wrap;align-self:${isUser?'flex-end':'flex-start'};background:${isUser?'linear-gradient(135deg,var(--accent),var(--accent-2))':'rgba(255,255,255,0.08)'};color:${isUser?'#fff':'var(--text-1)'};`;
+      div.textContent = text;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+      return div;
+    }
+
+    async function send(){
+      const msg = input.value.trim();
+      if(!msg || sending) return;
+      input.value = '';
+      bubble('user', msg);
+      const thinking = bubble('assistant', '...جارٍ الكتابة');
+      sending = true;
+      try{
+        const res = await fetch(AI_WORKER_URL, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ message: msg, history })
+        });
+        const data = await res.json();
+        thinking.remove();
+        const reply = data.reply || data.error || 'معلش، حصل خطأ في الرد.';
+        bubble('assistant', reply);
+        history.push({ role:'user', text: msg });
+        history.push({ role:'assistant', text: reply });
+        if(history.length > 20) history = history.slice(-20);
+      }catch(err){
+        thinking.remove();
+        bubble('assistant', 'تعذّر الاتصال بالمساعد — تحقق من الإنترنت. (' + (err.message||'') + ')');
+      }
+      sending = false;
+    }
+
+    container.addEventListener('click', (e)=>{
+      if(e.target.closest('[data-act="send"]')) send();
+      if(e.target.closest('[data-act="clear"]')){ chat.innerHTML=''; history=[]; }
+    });
+    input.addEventListener('keydown', e=>{ if(e.key==='Enter') send(); });
+
+    bubble('assistant', 'أهلاً 👋 أنا Aurora Assistant، اسألني عن أي حاجة.');
+  }
+});
+
 /* ---------------------------- 6) الإعدادات ---------------------------- */
 const WALLPAPERS = [
   {id:'wp-aurora', name:'شفق'},
@@ -2072,7 +2185,7 @@ registerApp({
    سطح المكتب: الأيقونات، شريط ابدأ، اللوحة السريعة، قائمة السياق
    ======================================================================== */
 
-const DESKTOP_SHORTCUTS = ['files','notepad','browser','calculator','pyconsole','dosbox','linuxvm','settings'];
+const DESKTOP_SHORTCUTS = ['files','notepad','browser','calculator','aiassistant','pyconsole','dosbox','linuxvm','settings'];
 
 function buildDesktopIcons(){
   const wrap = $('#desktop-icons');
@@ -2176,6 +2289,67 @@ $('#qp-volume').addEventListener('input', (e)=> $('#qp-vol-val').textContent = e
 $('#qp-battery').addEventListener('input', (e)=> setBattery(parseInt(e.target.value,10)));
 
 /* ========================================================================
+   زرار النسخ/اللصق العائم (يتعامل مع حافظة الجهاز الحقيقية)
+   ======================================================================== */
+let lastEditable = null;
+document.addEventListener('focusin', (e)=>{
+  const t = e.target;
+  if(t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && /text|password|email|search/.test(t.type)))){
+    lastEditable = t;
+  }
+});
+
+const clipFab = $('#clip-fab');
+const clipPanel = $('#clip-panel');
+const clipStatus = $('#clip-status');
+
+function toggleClipPanel(){ clipPanel.classList.toggle('open'); }
+clipFab.addEventListener('click', (e)=>{ e.stopPropagation(); toggleClipPanel(); });
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('#clip-panel') && !e.target.closest('#clip-fab')) clipPanel.classList.remove('open');
+});
+
+async function clipCopy(){
+  let text = window.getSelection().toString();
+  if(!text && lastEditable){
+    if(lastEditable.selectionStart !== lastEditable.selectionEnd){
+      text = lastEditable.value.slice(lastEditable.selectionStart, lastEditable.selectionEnd);
+    }else{
+      text = lastEditable.value;
+    }
+  }
+  if(!text){ clipStatus.textContent = 'مفيش نص محدد للنسخ'; return; }
+  try{
+    await navigator.clipboard.writeText(text);
+    clipStatus.textContent = 'تم النسخ ✅ (' + text.length + ' حرف)';
+  }catch(err){
+    clipStatus.textContent = 'تعذّر الوصول لحافظة الجهاز';
+  }
+}
+
+async function clipPaste(){
+  if(!lastEditable){ clipStatus.textContent = 'دوس جوه أي مربع كتابة الأول'; return; }
+  try{
+    const text = await navigator.clipboard.readText();
+    const el = lastEditable;
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    el.value = el.value.slice(0, start) + text + el.value.slice(end);
+    el.selectionStart = el.selectionEnd = start + text.length;
+    el.dispatchEvent(new Event('input', { bubbles:true }));
+    el.focus();
+    clipStatus.textContent = 'تم اللصق ✅';
+  }catch(err){
+    clipStatus.textContent = 'المتصفح رفض الوصول لحافظة الجهاز — جرّب لصق يدوي (Ctrl+V)';
+  }
+}
+
+clipPanel.addEventListener('click', (e)=>{
+  if(e.target.closest('[data-act="copy"]')) clipCopy();
+  if(e.target.closest('[data-act="paste"]')) clipPaste();
+});
+
+/* ========================================================================
    الإقلاع
    ======================================================================== */
 function boot(){
@@ -2205,6 +2379,12 @@ function startCloudFlow(){
     return;
   }
   window.AuroraCloud.onAuthStateChanged(async (user)=>{
+    if(user && !user.emailVerified){
+      cloudUser = user;
+      renderVerifyEmail(user);
+      lockOpen();
+      return;
+    }
     if(user){
       cloudUser = user;
       lockClose();
@@ -2231,6 +2411,36 @@ function startCloudFlow(){
       lockOpen();
     }
   });
+}
+
+function renderVerifyEmail(user){
+  const card = $('#lock-card');
+  card.innerHTML = `
+    <div class="lock-avatar">📧</div>
+    <div class="lock-title">تحقق من بريدك الإلكتروني</div>
+    <div class="lock-sub">بعتنالك لينك تأكيد على<br><b>${escapeHTML(user.email)}</b><br>افتح بريدك ودوس على اللينك، وبعدين ارجع هنا.</div>
+    <button class="lock-btn" data-act="check">✅ اتحقق، تابع</button>
+    <button class="lock-btn secondary" data-act="resend">📨 إعادة إرسال اللينك</button>
+    <button class="lock-btn skip" data-act="logout">تسجيل خروج</button>
+    <div class="lock-msg" id="lock-msg"></div>
+  `;
+  const msg = $('#lock-msg', card);
+  $('[data-act="check"]', card).addEventListener('click', async ()=>{
+    msg.textContent = 'جارٍ التحقق…';
+    const fresh = await window.AuroraCloud.refreshUser();
+    if(fresh && fresh.emailVerified){
+      msg.classList.add('ok'); msg.textContent = 'تم التحقق ✅';
+      setTimeout(()=> startCloudFlow(), 300);
+    }else{
+      msg.classList.remove('ok');
+      msg.textContent = 'لسه مفيش تأكيد — افتح بريدك ودوس على اللينك الأول';
+    }
+  });
+  $('[data-act="resend"]', card).addEventListener('click', async ()=>{
+    try{ await window.AuroraCloud.resendVerification(); msg.classList.add('ok'); msg.textContent = 'تم إرسال لينك جديد ✅'; }
+    catch(e){ msg.classList.remove('ok'); msg.textContent = 'تعذّر الإرسال، حاول بعد شوية'; }
+  });
+  $('[data-act="logout"]', card).addEventListener('click', ()=> cloudSignOut());
 }
 
 function renderCloudAuth(mode){
