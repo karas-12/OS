@@ -429,6 +429,10 @@ html[dir=rtl] .switch.on::after{transform:translateX(-20px);}
 #clip-panel .clip-status{font-size:10.5px;color:var(--text-3);text-align:center;min-height:14px;}
 
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
 </head>
 <body>
 
@@ -1675,11 +1679,37 @@ registerApp({
     function bubble(role, text){
       const div = document.createElement('div');
       const isUser = role === 'user';
-      div.style.cssText = `max-width:78%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.6;white-space:pre-wrap;align-self:${isUser?'flex-end':'flex-start'};background:${isUser?'linear-gradient(135deg,var(--accent),var(--accent-2))':'rgba(255,255,255,0.08)'};color:${isUser?'#fff':'var(--text-1)'};`;
-      div.textContent = text;
+      div.style.cssText = `max-width:78%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.7;align-self:${isUser?'flex-end':'flex-start'};background:${isUser?'linear-gradient(135deg,var(--accent),var(--accent-2))':'rgba(255,255,255,0.08)'};color:${isUser?'#fff':'var(--text-1)'};`;
+      if(isUser){
+        div.style.whiteSpace = 'pre-wrap';
+        div.textContent = text;
+      }else{
+        renderRichText(div, text);
+      }
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
       return div;
+    }
+
+    function renderRichText(el, text){
+      try{
+        el.innerHTML = window.marked ? window.marked.parse(text) : escapeHTML(text).replace(/\n/g,'<br>');
+      }catch(e){
+        el.textContent = text;
+      }
+      if(window.renderMathInElement){
+        try{
+          window.renderMathInElement(el, {
+            delimiters: [
+              {left:'$$', right:'$$', display:true},
+              {left:'\\[', right:'\\]', display:true},
+              {left:'\\(', right:'\\)', display:false},
+              {left:'$', right:'$', display:false},
+            ],
+            throwOnError:false,
+          });
+        }catch(e){}
+      }
     }
 
     async function send(){
